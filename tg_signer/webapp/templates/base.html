@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "TG Signer Web" }}</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #101a33;
+        --text: #e6e8ef;
+        --muted: #aab1c5;
+        --border: rgba(255, 255, 255, 0.08);
+        --primary: #6ea8fe;
+        --danger: #ff6b6b;
+        --ok: #2ecc71;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      }
+      a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+      header {
+        border-bottom: 1px solid var(--border);
+        background: rgba(16, 26, 51, 0.9);
+        backdrop-filter: blur(10px);
+        position: sticky;
+        top: 0;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      nav a {
+        margin-right: 12px;
+        color: var(--text);
+        opacity: 0.9;
+      }
+      nav a:hover {
+        opacity: 1;
+      }
+      .brand {
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .btn {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        padding: 8px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .btn.primary {
+        border-color: rgba(110, 168, 254, 0.35);
+        background: rgba(110, 168, 254, 0.18);
+      }
+      .btn.danger {
+        border-color: rgba(255, 107, 107, 0.35);
+        background: rgba(255, 107, 107, 0.16);
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        margin: 10px 0;
+      }
+      input[type="text"],
+      input[type="password"] {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.18);
+        color: var(--text);
+      }
+      .error {
+        color: var(--danger);
+      }
+      .ok {
+        color: var(--ok);
+      }
+    </style>
+  </head>
+  <body>
+    {% if show_nav %}
+    <header>
+      <div class="container">
+        <div class="row">
+          <div class="brand">TG Signer Web</div>
+          <nav>
+            <a href="/">仪表盘</a>
+            <a href="/accounts">账号</a>
+            <a href="/tasks">任务</a>
+            <a href="/runs">运行</a>
+            <a href="/backup">备份</a>
+            <a href="/settings">设置</a>
+          </nav>
+          <form method="post" action="/logout">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="btn danger" type="submit">退出</button>
+          </form>
+        </div>
+      </div>
+    </header>
+    {% endif %}
+    <main class="container">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

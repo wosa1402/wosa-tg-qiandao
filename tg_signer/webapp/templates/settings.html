@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% set show_nav = true %}
+{% set title = "设置 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel" style="max-width: 860px;">
+    <h2 style="margin-top: 0">设置</h2>
+    <p class="muted">修改后会写入本地配置文件，并在需要时触发 WebDAV 备份。</p>
+    {% if guide %}
+      <p class="ok">检测到未配置 Telegram API，请先填写 API ID 与 API HASH。</p>
+    {% endif %}
+
+    {% if ok %}
+      <p class="ok">配置已保存</p>
+    {% endif %}
+    {% if errors %}
+      <div class="error">
+        {% for err in errors %}
+          <div>{{ err }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" action="/settings">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+      <div class="field">
+        <label>Telegram API ID（可选）</label>
+        <input type="text" name="api_id" value="{{ (form.api_id if form else config.api_id) or '' }}" />
+      </div>
+      <div class="field">
+        <label>Telegram API HASH（可选）</label>
+        <input type="text" name="api_hash" value="{{ (form.api_hash if form else config.api_hash) or '' }}" />
+      </div>
+      <div class="field">
+        <label>代理（可选）</label>
+        <input type="text" name="proxy" placeholder="socks5://127.0.0.1:7890" value="{{ (form.proxy if form else config.proxy) or '' }}" />
+      </div>
+
+      <div style="height: 8px;"></div>
+      <div class="field">
+        <label>管理员用户名</label>
+        <input type="text" name="admin_username" value="{{ (form.admin_username if form else config.admin_username) or 'admin' }}" required />
+      </div>
+      <div class="field">
+        <label>管理员密码（留空表示不修改）</label>
+        <input type="password" name="admin_password" value="" />
+      </div>
+      <div class="field">
+        <label>会话密钥（留空表示不修改）</label>
+        <input type="text" name="session_secret" value="" />
+      </div>
+      <div class="field">
+        <label>Cookie Secure（HTTPS 推荐）</label>
+        <input type="text" name="cookie_secure" value="{{ '1' if (form.cookie_secure if form is not none else config.cookie_secure) else '0' }}" />
+        <div class="muted">填 1 启用，仅 HTTPS 可用；本地调试可填 0。</div>
+      </div>
+
+      <div style="height: 8px;"></div>
+      <h3 style="margin: 0;">WebDAV 备份（可选但强烈建议）</h3>
+      <div class="field">
+        <label>WebDAV URL</label>
+        <input type="text" name="webdav_url" value="{{ (form.webdav_url if form else (config.webdav.url if config.webdav else '')) or '' }}" />
+      </div>
+      <div class="field">
+        <label>WebDAV 用户名</label>
+        <input type="text" name="webdav_username" value="{{ (form.webdav_username if form else (config.webdav.username if config.webdav else '')) or '' }}" />
+      </div>
+      <div class="field">
+        <label>WebDAV 密码</label>
+        <input type="password" name="webdav_password" value="{{ (form.webdav_password if form else (config.webdav.password if config.webdav else '')) or '' }}" />
+      </div>
+      <div class="field">
+        <label>远端路径</label>
+        <input type="text" name="webdav_remote_path" placeholder="/tg-signer/" value="{{ (form.webdav_remote_path if form else (config.webdav.remote_path if config.webdav else '')) or '' }}" />
+      </div>
+      <div class="field">
+        <label>备份间隔（秒）</label>
+        <input type="text" name="webdav_interval_seconds" value="{{ (form.webdav_interval_seconds if form else (config.webdav.interval_seconds if config.webdav else 300)) or '' }}" />
+      </div>
+      <div class="field">
+        <label>备份加密密钥（强烈建议）</label>
+        <input type="text" name="webdav_encryption_key" value="{{ (form.webdav_encryption_key if form else (config.webdav.encryption_key if config.webdav else '')) or '' }}" />
+      </div>
+
+      <button class="btn primary" type="submit">保存配置</button>
+    </form>
+  </div>
+{% endblock %}

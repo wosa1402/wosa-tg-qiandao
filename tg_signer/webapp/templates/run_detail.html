@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% set show_nav = true %}
+{% set title = "运行详情 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel">
+    <div class="row">
+      <h2 style="margin: 0;">运行详情</h2>
+      <a class="btn" href="/runs">返回</a>
+    </div>
+
+    <div style="height: 10px;"></div>
+    <div class="panel">
+      <div class="row">
+        <div>
+          <div class="muted">run_id</div>
+          <code>{{ run.run_id }}</code>
+        </div>
+        <div>
+          <div class="muted">任务</div>
+          <code>{{ run.task_name }}</code>
+        </div>
+        <div>
+          <div class="muted">账号</div>
+          <code>{{ run.account_name }}</code>
+        </div>
+        <div>
+          <div class="muted">状态</div>
+          <span class="muted">{{ run.status }}</span>
+        </div>
+      </div>
+      <div style="height: 10px;"></div>
+      <div class="row">
+        <div class="muted">开始：{{ run.started_at or "-" }}</div>
+        <div class="muted">结束：{{ run.finished_at or "-" }}</div>
+        <div class="muted">exit_code：{{ run.exit_code if run.exit_code is not none else "-" }}</div>
+      </div>
+      {% if run.error_message %}
+        <p class="error">{{ run.error_message }}</p>
+      {% endif %}
+
+      {% if run.status == "running" %}
+        <form method="post" action="/runs/{{ run.run_id }}/stop">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="btn danger" type="submit">停止</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <div style="height: 12px;"></div>
+
+    <div class="panel">
+      <div class="row">
+        <h3 style="margin: 0;">日志</h3>
+        <span class="muted">实时刷新（SSE）</span>
+      </div>
+      <pre id="logs" style="white-space: pre-wrap; margin: 10px 0 0; font-size: 12px; line-height: 1.4; max-height: 520px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: rgba(0,0,0,0.18);"></pre>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const logs = document.getElementById("logs");
+      function append(line) {
+        logs.textContent += line + "\\n";
+        logs.scrollTop = logs.scrollHeight;
+      }
+
+      const es = new EventSource("/runs/{{ run.run_id }}/logs/stream");
+      es.addEventListener("log", (e) => append(e.data));
+      es.addEventListener("status", (e) => append("[status] " + e.data));
+      es.addEventListener("ping", () => {});
+      es.onerror = () => {
+        append("[warn] 日志连接中断，浏览器将自动重试...");
+      };
+    })();
+  </script>
+{% endblock %}
+

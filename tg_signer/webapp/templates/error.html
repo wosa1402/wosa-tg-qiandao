@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% set show_nav = show_nav if show_nav is not none else false %}
+{% set title = "出错了 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel" style="max-width: 720px; margin: 40px auto;">
+    <h2 style="margin-top: 0">出错了</h2>
+    <p class="error">{{ message }}</p>
+    {% if detail %}
+      <pre style="white-space: pre-wrap; color: var(--muted); border: 1px solid var(--border); padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.12);">{{ detail }}</pre>
+    {% endif %}
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;">
+      <a class="btn" href="{{ back_url or '/' }}">返回</a>
+      <a class="btn primary" href="/">回到仪表盘</a>
+    </div>
+  </div>
+{% endblock %}
+

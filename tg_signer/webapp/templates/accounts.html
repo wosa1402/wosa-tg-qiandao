@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% set show_nav = true %}
+{% set title = "账号 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel">
+    <h2 style="margin-top: 0">账号</h2>
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="/accounts" style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="field" style="min-width: 260px;">
+        <label>新增账号（account 名）</label>
+        <input type="text" name="account_name" placeholder="例如 主号" value="{{ (form.account_name if form else '') }}" required />
+      </div>
+      <button class="btn primary" type="submit">创建</button>
+    </form>
+
+    <div style="height: 12px;"></div>
+
+    {% if items|length == 0 %}
+      <p class="muted">暂无账号，请先创建一个账号，然后进入登录流程。</p>
+    {% else %}
+      <div class="panel" style="padding: 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align: left;">
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">账号</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">状态</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">上次登录</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">错误</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in items %}
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  <code>{{ a.account_name }}</code>
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  {% if a.logged_in %}
+                    <span class="ok">已登录</span>
+                  {% else %}
+                    <span class="muted">未登录</span>
+                  {% endif %}
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  <span class="muted">{{ a.last_login_at or "-" }}</span>
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  {% if a.last_error %}
+                    <span class="error">{{ a.last_error }}</span>
+                  {% else %}
+                    <span class="muted">-</span>
+                  {% endif %}
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  <a class="btn" href="/accounts/{{ a.account_name }}/login">登录</a>
+                  <form method="post" action="/accounts/{{ a.account_name }}/logout" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <button class="btn danger" type="submit">登出</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% set show_nav = true %}
+{% set title = "任务 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel">
+    <h2 style="margin-top: 0">任务</h2>
+    <p class="muted">当前先支持“签到任务（signer）”的原始 JSON 配置编辑与校验。</p>
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="/tasks" style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="field" style="min-width: 260px;">
+        <label>任务名</label>
+        <input type="text" name="task_name" placeholder="例如 每日签到" value="{{ (form.task_name if form else '') }}" required />
+      </div>
+      <div class="field" style="min-width: 220px;">
+        <label>账号</label>
+        <select name="account_name" style="padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.18); color: var(--text);" required>
+          {% if accounts|length == 0 %}
+            <option value="">请先创建账号</option>
+          {% else %}
+            {% for a in accounts %}
+              <option value="{{ a }}" {% if form and form.account_name == a %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          {% endif %}
+        </select>
+      </div>
+      {% if accounts|length == 0 %}
+        <button class="btn primary" type="submit" disabled>创建</button>
+        <span class="muted">先去 /accounts 创建并登录账号</span>
+      {% else %}
+        <button class="btn primary" type="submit">创建</button>
+      {% endif %}
+    </form>
+
+    <div style="height: 12px;"></div>
+
+    {% if tasks|length == 0 %}
+      <p class="muted">暂无任务。先创建任务，再进入配置页面编辑 JSON。</p>
+    {% else %}
+      <div class="panel" style="padding: 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align: left;">
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">任务</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">账号</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">类型</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">更新</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tasks %}
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ t.task_name }}</code></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ t.account_name }}</code></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ t.type }}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ t.updated_at }}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  <a class="btn" href="/tasks/{{ t.task_name }}/edit">编辑配置</a>
+                  <form method="post" action="/tasks/{{ t.task_name }}/run-once" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <button class="btn primary" type="submit">运行一次</button>
+                  </form>
+                  <form method="post" action="/tasks/{{ t.task_name }}/run" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <button class="btn" type="submit">常驻运行</button>
+                  </form>
+                  <form method="post" action="/tasks/{{ t.task_name }}/delete" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <button class="btn danger" type="submit">删除</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

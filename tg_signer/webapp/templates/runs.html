@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% set show_nav = true %}
+{% set title = "运行 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel">
+    <h2 style="margin-top: 0">运行</h2>
+    <p class="muted">这里展示所有运行实例（run_id）。</p>
+
+    {% if items|length == 0 %}
+      <p class="muted">暂无运行记录。去 /tasks 发起一次运行。</p>
+    {% else %}
+      <div class="panel" style="padding: 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align: left;">
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">run_id</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">任务</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">账号</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">模式</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">状态</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">开始</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">结束</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in items %}
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  <code style="font-size: 12px;">{{ r.run_id }}</code>
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ r.task_name }}</code></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ r.account_name }}</code></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ r.mode }}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ r.status }}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ r.started_at or "-" }}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ r.finished_at or "-" }}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  <a class="btn" href="/runs/{{ r.run_id }}">查看</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+

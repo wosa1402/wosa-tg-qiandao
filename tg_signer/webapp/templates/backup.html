@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% set show_nav = true %}
+{% set title = "备份 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel">
+    <h2 style="margin-top: 0">备份（WebDAV）</h2>
+
+    {% if ok %}
+      <p class="ok">操作成功</p>
+    {% endif %}
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    {% if status is none %}
+      <p class="muted">当前未配置 WebDAV 备份，请先在 /settings 完成配置。</p>
+    {% else %}
+      <div class="panel">
+        <div class="muted">远端地址</div>
+        <div><code style="font-size: 12px;">{{ status.remote_url }}</code></div>
+        <div style="height: 10px;"></div>
+        <div class="row">
+          <div class="muted">上次拉取：{{ status.last_pull_at or "-" }}</div>
+          <div class="muted">上次推送：{{ status.last_push_at or "-" }}</div>
+        </div>
+        {% if status.last_error %}
+          <p class="error">{{ status.last_error }}</p>
+        {% endif %}
+      </div>
+
+      <div class="row">
+        <form method="post" action="/backup/pull">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="btn danger" type="submit">从 WebDAV 恢复（覆盖本地）</button>
+        </form>
+        <form method="post" action="/backup/push">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="btn primary" type="submit">立即备份到 WebDAV</button>
+        </form>
+      </div>
+
+      <p class="muted" style="margin-top: 12px;">
+        提示：在无持久化卷的平台上，建议开启定时备份，并配置备份加密密钥。
+      </p>
+    {% endif %}
+  </div>
+{% endblock %}
