@@ -36,6 +36,8 @@ python -m tg_signer.webapp
 
 首次启动会自动生成管理员密码（用户名为 `admin`，密码写入 `./.tg-signer-web/web.config.json` 并打印到日志）。
 
+登录后可在 `/tasks` 创建任务，并用“向导生成”通过表单快速生成 `config.json`（也可切回 JSON 编辑）。
+
 部署与使用说明见：`docs/web-quickstart.md`（包含登录方式与容器平台方案）。
 
 ### Docker

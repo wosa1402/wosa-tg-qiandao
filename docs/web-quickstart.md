@@ -35,6 +35,9 @@ python -m tg_signer.webapp
 配置会写入：`./.tg-signer-web/web.config.json`  
 WebDAV 备份会包含：账号/任务/运行记录/配置（含 `web.config.json`）。
 
+接着进入 `/tasks`：
+- 先创建任务，再点“向导生成”用表单生成 `config.json`（也可随时切回“编辑配置”手写 JSON）。
+
 ## 4. 容器平台（Docker）
 
 构建镜像：

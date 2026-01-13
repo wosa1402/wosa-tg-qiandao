@@ -6,7 +6,10 @@
   <div class="panel">
     <div class="row">
       <h2 style="margin: 0;">编辑任务：<code>{{ task.task_name }}</code></h2>
-      <a class="btn" href="/tasks">返回</a>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a class="btn" href="/tasks">返回</a>
+        <a class="btn" href="/tasks/{{ task.task_name }}/wizard">向导生成</a>
+      </div>
     </div>
     <p class="muted">保存时会做配置校验与规范化（自动补全/转换旧版本）。</p>
     {% if ok %}
@@ -26,4 +29,3 @@
     </form>
   </div>
 {% endblock %}
-

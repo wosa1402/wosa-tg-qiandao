@@ -61,6 +61,7 @@
                 <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ t.updated_at }}</span></td>
                 <td style="padding: 12px; border-bottom: 1px solid var(--border);">
                   <a class="btn" href="/tasks/{{ t.task_name }}/edit">编辑配置</a>
+                  <a class="btn" href="/tasks/{{ t.task_name }}/wizard">向导生成</a>
                   <form method="post" action="/tasks/{{ t.task_name }}/run-once" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                     <button class="btn primary" type="submit">运行一次</button>

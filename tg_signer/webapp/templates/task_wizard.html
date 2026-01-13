@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% set show_nav = true %}
+{% set title = "任务向导 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel" style="max-width: 980px;">
+    <div class="row">
+      <h2 style="margin: 0;">任务向导：<code>{{ task.task_name }}</code></h2>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a class="btn" href="/tasks">返回任务列表</a>
+        <a class="btn" href="/tasks/{{ task.task_name }}/edit">改用 JSON 编辑</a>
+      </div>
+    </div>
+    <p class="muted">
+      用表单生成并保存 <code>config.json</code>。当前仅支持“签到任务（signer）”。
+      生成后依然可以回到 JSON 页面做高级修改。
+    </p>
+    {% if ok %}
+      <p class="ok">已生成并保存配置</p>
+    {% endif %}
+    {% if errors %}
+      <div class="error">
+        {% for err in errors %}
+          <div>{{ err }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" action="/tasks/{{ task.task_name }}/wizard">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+      <h3 style="margin-top: 6px;">1) 选择对话（chat_id）</h3>
+
+      <div class="field">
+        <label>从最近对话选择（可选）</label>
+        <select id="recent_chat_select" style="padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.18); color: var(--text);">
+          <option value="">（不选择，手动填写）</option>
+          {% for c in recent_chats %}
+            <option value="{{ c.id }}">{{ c.label }}</option>
+          {% endfor %}
+        </select>
+        <div class="muted">如果列表为空，请先在 /accounts 登录 Telegram 账号。</div>
+      </div>
+
+      <div class="field">
+        <label>chat_id（必填）</label>
+        <input id="chat_id_input" type="text" name="chat_id" placeholder="例如 -1001234567890" value="{{ (form.chat_id if form else '') }}" required />
+        <div class="muted">群/频道通常为负数；也可以直接填从机器人输出里看到的 chat id。</div>
+      </div>
+
+      <div class="field">
+        <label>对话备注名（可选）</label>
+        <input type="text" name="chat_name" placeholder="例如 每日签到机器人" value="{{ (form.chat_name if form else '') }}" />
+      </div>
+
+      <div class="field">
+        <label>发送消息后等待 N 秒删除（可选）</label>
+        <input type="text" name="delete_after" placeholder="例如 10；留空表示不删除" value="{{ (form.delete_after if form else '') }}" />
+      </div>
+
+      <div class="field">
+        <label>动作间隔（秒）</label>
+        <input type="text" name="action_interval" value="{{ (form.action_interval if form else '1') }}" />
+      </div>
+
+      <h3 style="margin-top: 18px;">2) 配置动作流（actions）</h3>
+      <p class="muted">第 1 个动作必须是“发送文本”或“发送骰子”。空行会被忽略。</p>
+
+      <div class="panel" style="padding: 12px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align: left;">
+              <th style="padding: 10px; border-bottom: 1px solid var(--border); width: 90px;">序号</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--border); width: 260px;">动作类型</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--border);">参数（按类型填写）</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for i in [1,2,3,4,5,6] %}
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);"><span class="muted">第 {{ i }} 个</span></td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                  <select name="action_{{ i }}_type" style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.18); color: var(--text);">
+                    <option value="">（空）</option>
+                    <option value="send_text" {% if form and form["action_" ~ i ~ "_type"] == "send_text" %}selected{% endif %}>发送文本</option>
+                    <option value="send_dice" {% if form and form["action_" ~ i ~ "_type"] == "send_dice" %}selected{% endif %}>发送骰子</option>
+                    <option value="click_text" {% if form and form["action_" ~ i ~ "_type"] == "click_text" %}selected{% endif %}>根据文本点击键盘</option>
+                    <option value="choose_image" {% if form and form["action_" ~ i ~ "_type"] == "choose_image" %}selected{% endif %}>根据图片选择选项（需大模型）</option>
+                    <option value="reply_calc" {% if form and form["action_" ~ i ~ "_type"] == "reply_calc" %}selected{% endif %}>回复计算题（需大模型）</option>
+                  </select>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                  <input type="text" name="action_{{ i }}_value" placeholder="发送文本/按钮文本/骰子(默认🎲)" value="{{ (form["action_" ~ i ~ "_value"] if form else '') }}" />
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top: 18px;">3) 运行计划（sign_at）</h3>
+      <div class="field">
+        <label>签到时间（time 或 crontab）</label>
+        <input type="text" name="sign_at" placeholder="例如 0 6 * * * 或 06:00:00" value="{{ (form.sign_at if form else '0 6 * * *') }}" />
+      </div>
+      <div class="field">
+        <label>签到时间随机误差（秒）</label>
+        <input type="text" name="random_seconds" value="{{ (form.random_seconds if form else '300') }}" />
+      </div>
+      <div class="field">
+        <label>多 chat 连续签到间隔（秒）</label>
+        <input type="text" name="sign_interval" value="{{ (form.sign_interval if form else '1') }}" />
+      </div>
+
+      <button class="btn primary" type="submit">生成并保存</button>
+    </form>
+
+    {% if preview %}
+      <div style="height: 16px;"></div>
+      <h3 style="margin-top: 0;">生成预览</h3>
+      <div class="field">
+        <textarea rows="18" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.18); color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;" readonly>{{ preview }}</textarea>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    (function () {
+      const select = document.getElementById("recent_chat_select");
+      const input = document.getElementById("chat_id_input");
+      if (!select || !input) return;
+      select.addEventListener("change", function () {
+        if (select.value) input.value = select.value;
+      });
+    })();
+  </script>
+{% endblock %}
+
