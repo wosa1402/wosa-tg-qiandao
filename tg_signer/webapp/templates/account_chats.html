@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% set show_nav = true %}
+{% set title = "最近对话 - TG Signer Web" %}
+
+{% block content %}
+  <div class="panel">
+    <div class="row">
+      <h2 style="margin: 0;">最近对话（chat_id）</h2>
+      <a class="btn" href="/accounts">返回账号</a>
+    </div>
+
+    <p class="muted">
+      账号：<code>{{ account_name }}</code>，
+      当前拉取：<code>{{ limit }}</code> 条（可在地址栏用 <code>?n=100</code> 调整，最大 200）。
+    </p>
+
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    {% if items|length == 0 %}
+      <p class="muted">暂无数据。请确认已登录 Telegram 账号，并且目标对话在最近联系人里。</p>
+    {% else %}
+      <div class="panel" style="padding: 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align: left;">
+              <th style="padding: 12px; border-bottom: 1px solid var(--border); width: 220px;">chat_id</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border); width: 220px;">类型</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">名称</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border); width: 140px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in items %}
+              {% set display = (c.title or ((c.first_name or "") ~ " " ~ (c.last_name or "")).strip() or (("@" ~ c.username) if c.username else "") or "(未命名对话)") %}
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code class="chat-id">{{ c.id }}</code></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ c.type }}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  <div>{{ display }}</div>
+                  {% if c.username %}
+                    <div class="muted">@{{ c.username }}</div>
+                  {% endif %}
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  <button class="btn" type="button" onclick="copyText('{{ c.id }}')">复制</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(String(text));
+      } catch (e) {
+        // ignore
+      }
+    }
+  </script>
+{% endblock %}
+

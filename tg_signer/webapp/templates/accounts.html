@@ -59,6 +59,11 @@
                 </td>
                 <td style="padding: 12px; border-bottom: 1px solid var(--border);">
                   <a class="btn" href="/accounts/{{ a.account_name }}/login">登录</a>
+                  {% if a.logged_in %}
+                    <a class="btn" href="/accounts/{{ a.account_name }}/chats">最近对话</a>
+                  {% else %}
+                    <span class="muted">先登录后可拉取最近对话</span>
+                  {% endif %}
                   <form method="post" action="/accounts/{{ a.account_name }}/logout" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                     <button class="btn danger" type="submit">登出</button>

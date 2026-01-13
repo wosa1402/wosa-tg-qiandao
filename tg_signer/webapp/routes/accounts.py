@@ -199,6 +199,75 @@ async def accounts_page(request: Request):
     )
 
 
+@router.get("/accounts/{account_name}/chats", response_class=HTMLResponse)
+async def account_recent_chats_page(request: Request, account_name: str, n: int = 50):
+    redirect = _require_login(request)
+    if redirect:
+        return redirect
+    templates = _get_templates(request)
+    settings: WebSettings = request.app.state.settings
+
+    account_name = validate_name(account_name, label="账号名")
+    limit = max(1, min(int(n or 50), 200))
+
+    if not _is_logged_in(settings.sessions_dir, account_name):
+        return templates.TemplateResponse(
+            request,
+            "account_chats.html",
+            {
+                "request": request,
+                "account_name": account_name,
+                "limit": limit,
+                "items": [],
+                "csrf_token": issue_csrf_token(request),
+                "error": "账号未登录：请先在 /accounts 完成 Telegram 登录",
+            },
+            status_code=400,
+        )
+
+    proxy = get_proxy()
+    client = get_client(account_name, proxy, workdir=settings.sessions_dir)
+    items: list[dict[str, object]] = []
+    error: Optional[str] = None
+    try:
+        if not getattr(client, "is_connected", False):
+            await client.connect()
+        async for dialog in client.get_dialogs(limit):
+            chat = dialog.chat
+            items.append(
+                {
+                    "id": chat.id,
+                    "type": str(chat.type),
+                    "title": chat.title,
+                    "username": chat.username,
+                    "first_name": chat.first_name,
+                    "last_name": chat.last_name,
+                }
+            )
+    except Exception as e:
+        error = str(e)
+    finally:
+        try:
+            if getattr(client, "is_connected", False):
+                await client.disconnect()
+        except Exception:
+            pass
+
+    return templates.TemplateResponse(
+        request,
+        "account_chats.html",
+        {
+            "request": request,
+            "account_name": account_name,
+            "limit": limit,
+            "items": items,
+            "csrf_token": issue_csrf_token(request),
+            "error": error,
+        },
+        status_code=400 if error else 200,
+    )
+
+
 @router.post("/accounts")
 async def create_account(
     request: Request, account_name: str = Form(""), csrf_token: str = Form("")
