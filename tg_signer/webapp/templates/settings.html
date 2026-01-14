@@ -73,6 +73,7 @@
       <div class="field">
         <label>远端路径</label>
         <input type="text" name="webdav_remote_path" placeholder="/tg-signer/" value="{{ (form.webdav_remote_path if form else (config.webdav.remote_path if config.webdav else '')) or '' }}" />
+        <div class="muted">建议填写目录路径：<code>/beifeng</code> 或 <code>/beifeng/</code> 均可；也支持填写完整文件路径（例如 <code>/beifeng/backup.tar.gz</code>）。</div>
       </div>
       <div class="field">
         <label>备份间隔（秒）</label>

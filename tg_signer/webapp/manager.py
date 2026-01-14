@@ -61,6 +61,9 @@ class WorkerManager:
     def set_backup_scheduler(self, backup_scheduler: BackupScheduler | None) -> None:
         self._backup_scheduler = backup_scheduler
 
+    def has_running(self) -> bool:
+        return bool(self._current_run_by_account)
+
     async def _schedule_backup_push(self, reason: str) -> None:
         scheduler = self._backup_scheduler
         if not scheduler:
@@ -370,4 +373,3 @@ class WorkerManager:
                     self._current_task_by_account.pop(account_name, None)
             await self._schedule_backup_push("run_finish")
             return
-

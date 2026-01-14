@@ -35,6 +35,11 @@ def _remote_file(remote_path: str) -> str:
         remote_path = "/" + remote_path
     if remote_path.endswith("/"):
         return remote_path + "backup.latest.tar.gz"
+    # 兼容用户填写“目录但没带 /”的情况（例如 /beifeng）。
+    # 如果最后一段不包含扩展名，则视为目录并自动生成备份文件名。
+    last_segment = remote_path.rsplit("/", 1)[-1]
+    if "." not in last_segment:
+        return remote_path + "/backup.latest.tar.gz"
     return remote_path
 
 
@@ -189,6 +194,15 @@ class WebDavBackupManager:
             follow_redirects=True,
         ) as client:
             await self._ensure_remote_dirs(client)
+            # 一些 WebDAV 实现不允许直接覆盖同名文件（PUT 会报错）。
+            # 为兼容此类网盘/服务端，先尝试删除旧备份（不存在则忽略）。
+            try:
+                resp = await client.delete(self._remote_url)
+                if resp.status_code not in {200, 202, 204, 404, 405}:
+                    resp.raise_for_status()
+            except Exception:
+                # 删除失败不一定影响 PUT 覆盖（不同 WebDAV 行为不同），继续尝试上传。
+                pass
             resp = await client.put(
                 self._remote_url,
                 content=data,
