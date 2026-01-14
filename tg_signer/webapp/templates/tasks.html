@@ -5,7 +5,12 @@
 {% block content %}
   <div class="panel">
     <h2 style="margin-top: 0">任务</h2>
-    <p class="muted">当前先支持“签到任务（signer）”的原始 JSON 配置编辑与校验。</p>
+    <p class="muted">
+      “启用”表示该任务会按 <code>sign_at</code> 的计划常驻运行；“运行一次”会立刻执行一次（不影响启用状态）。
+    </p>
+    {% if ok %}
+      <p class="ok">{{ ok }}</p>
+    {% endif %}
     {% if error %}
       <p class="error">{{ error }}</p>
     {% endif %}
@@ -47,7 +52,8 @@
             <tr style="text-align: left;">
               <th style="padding: 12px; border-bottom: 1px solid var(--border);">任务</th>
               <th style="padding: 12px; border-bottom: 1px solid var(--border);">账号</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">类型</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">状态</th>
+              <th style="padding: 12px; border-bottom: 1px solid var(--border);">计划</th>
               <th style="padding: 12px; border-bottom: 1px solid var(--border);">更新</th>
               <th style="padding: 12px; border-bottom: 1px solid var(--border);">操作</th>
             </tr>
@@ -57,18 +63,59 @@
               <tr>
                 <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ t.task_name }}</code></td>
                 <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ t.account_name }}</code></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ t.type }}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  {% if t.enabled %}
+                    {% if t.running %}
+                      <span class="badge ok">已启用 · 运行中</span>
+                    {% elif not t.logged_in %}
+                      <span class="badge">已启用 · 待登录</span>
+                    {% else %}
+                      <span class="badge">已启用 · 未运行</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge off">未启用</span>
+                  {% endif %}
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
+                  {% if t.config_ok %}
+                    <div><span class="muted">{{ t.schedule_label }}</span></div>
+                    <div class="muted" style="font-size: 12px;">
+                      随机 {{ t.random_seconds }} 秒 · 间隔 {{ t.sign_interval }} 秒
+                    </div>
+                  {% else %}
+                    <div class="error">配置有误（建议用 JSON 编辑修复）</div>
+                  {% endif %}
+                </td>
                 <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ t.updated_at }}</span></td>
                 <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                  <a class="btn" href="/tasks/{{ t.task_name }}/edit">编辑配置</a>
-                  <a class="btn" href="/tasks/{{ t.task_name }}/wizard">向导生成</a>
+                  <a class="btn" href="/tasks/{{ t.task_name }}/wizard">向导配置</a>
+                  <a class="btn" href="/tasks/{{ t.task_name }}/edit">JSON 编辑</a>
+                  <a class="btn" href="/tasks/{{ t.task_name }}/schedule">时间设置</a>
+
+                  {% if t.enabled %}
+                    <form method="post" action="/tasks/{{ t.task_name }}/disable" style="display: inline;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                      <button class="btn danger" type="submit">停用</button>
+                    </form>
+                    {% if not t.running and t.logged_in %}
+                      <form method="post" action="/tasks/{{ t.task_name }}/enable" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                        <button class="btn primary" type="submit">启动</button>
+                      </form>
+                    {% endif %}
+                    {% if t.running and t.running_run_id %}
+                      <a class="btn" href="/runs/{{ t.running_run_id }}">查看运行</a>
+                    {% endif %}
+                  {% else %}
+                    <form method="post" action="/tasks/{{ t.task_name }}/enable" style="display: inline;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                      <button class="btn primary" type="submit">启用</button>
+                    </form>
+                  {% endif %}
+
                   <form method="post" action="/tasks/{{ t.task_name }}/run-once" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <button class="btn primary" type="submit">运行一次</button>
-                  </form>
-                  <form method="post" action="/tasks/{{ t.task_name }}/run" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <button class="btn" type="submit">常驻运行</button>
+                    <button class="btn" type="submit" {% if not t.logged_in or t.running %}disabled{% endif %}>运行一次</button>
                   </form>
                   <form method="post" action="/tasks/{{ t.task_name }}/delete" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import shutil
+from datetime import time as dt_time
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
+from croniter import CroniterBadCronError, croniter
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
@@ -18,7 +20,7 @@ from tg_signer.webapp.security import (
     verify_csrf_token,
 )
 from tg_signer.webapp.settings import WebSettings
-from tg_signer.webapp.store import AccountsStore, TasksStore, validate_name
+from tg_signer.webapp.store import AccountsStore, RunsStore, TasksStore, validate_name
 
 router = APIRouter()
 
@@ -35,6 +37,18 @@ def _require_login(request: Request):
 
 def _quote_segment(value: str) -> str:
     return quote(value, safe="")
+
+def _quote_query(value: str) -> str:
+    return quote(value, safe="")
+
+
+def _redirect_tasks(*, ok: str = "", error: str = "") -> RedirectResponse:
+    url = "/tasks"
+    if ok:
+        url = f"{url}?ok={_quote_query(ok)}"
+    elif error:
+        url = f"{url}?error={_quote_query(error)}"
+    return RedirectResponse(url=url, status_code=303)
 
 
 def _validate_signer_config(raw: Any) -> dict[str, Any]:
@@ -55,6 +69,27 @@ def _session_paths(sessions_dir: Path, account_name: str) -> list[Path]:
 
 def _is_account_logged_in(settings: WebSettings, account_name: str) -> bool:
     return any(p.exists() for p in _session_paths(settings.sessions_dir, account_name))
+
+
+def _humanize_sign_at(sign_at: str) -> str:
+    sign_at = (sign_at or "").strip()
+    if not sign_at:
+        return "-"
+    try:
+        parsed = dt_time.fromisoformat(sign_at)
+        return f"每天 {parsed.hour:02d}:{parsed.minute:02d}"
+    except ValueError:
+        pass
+    parts = sign_at.split()
+    if len(parts) == 5 and parts[2:] == ["*", "*", "*"]:
+        try:
+            minute = int(parts[0])
+            hour = int(parts[1])
+        except ValueError:
+            return sign_at
+        if 0 <= hour < 24 and 0 <= minute < 60:
+            return f"每天 {hour:02d}:{minute:02d}"
+    return sign_at
 
 
 def _format_chat_label(item: dict[str, Any]) -> str:
@@ -131,6 +166,48 @@ def _parse_optional_int(value: str, *, label: str, errors: list[str]) -> int | N
         return None
 
 
+def _normalize_sign_at(value: str, *, errors: list[str]) -> str | None:
+    value = (value or "").replace("：", ":").strip()
+    if not value:
+        errors.append("签到时间不能为空")
+        return None
+    try:
+        parsed = dt_time.fromisoformat(value)
+        return f"{parsed.minute} {parsed.hour} * * *"
+    except ValueError:
+        pass
+    try:
+        croniter(value)
+    except CroniterBadCronError:
+        errors.append("签到时间格式不正确：请输入 HH:MM 或 crontab 表达式（如 0 6 * * *）")
+        return None
+    return value
+
+
+def _cron_to_time_value(sign_at: str) -> str | None:
+    sign_at = (sign_at or "").strip()
+    if not sign_at:
+        return None
+    try:
+        parsed = dt_time.fromisoformat(sign_at)
+        return f"{parsed.hour:02d}:{parsed.minute:02d}"
+    except ValueError:
+        pass
+    parts = sign_at.split()
+    if len(parts) != 5:
+        return None
+    if parts[2:] != ["*", "*", "*"]:
+        return None
+    try:
+        minute = int(parts[0])
+        hour = int(parts[1])
+    except ValueError:
+        return None
+    if not (0 <= hour < 24 and 0 <= minute < 60):
+        return None
+    return f"{hour:02d}:{minute:02d}"
+
+
 def _parse_optional_float(value: str, *, label: str, errors: list[str]) -> float | None:
     value = (value or "").strip()
     if not value:
@@ -201,17 +278,76 @@ def _defaults_for_wizard() -> dict[str, Any]:
     return form
 
 
+async def _collect_accounts_and_tasks(
+    request: Request,
+) -> tuple[list[str], list[dict[str, Any]]]:
+    settings: WebSettings = request.app.state.settings
+    accounts_store: AccountsStore = request.app.state.accounts_store
+    tasks_store: TasksStore = request.app.state.tasks_store
+    runs_store: RunsStore = request.app.state.runs_store
+    manager: WorkerManager = request.app.state.worker_manager
+
+    accounts = [a.account_name for a in accounts_store.list()]
+    tasks: list[dict[str, Any]] = []
+    for t in tasks_store.list():
+        config_summary: dict[str, Any] = {
+            "sign_at": None,
+            "schedule_label": "-",
+            "random_seconds": None,
+            "sign_interval": None,
+            "config_ok": False,
+        }
+        try:
+            raw_text = tasks_store.read_config_text(t.task_name)
+            raw = json.loads(raw_text or "{}")
+            loaded = SignConfigV3.load(raw)
+            if loaded:
+                cfg, _from_old = loaded
+                config_summary = {
+                    "sign_at": cfg.sign_at,
+                    "schedule_label": _humanize_sign_at(cfg.sign_at),
+                    "random_seconds": cfg.random_seconds,
+                    "sign_interval": cfg.sign_interval,
+                    "config_ok": True,
+                }
+        except Exception:
+            config_summary = {
+                "sign_at": None,
+                "schedule_label": "配置有误",
+                "random_seconds": None,
+                "sign_interval": None,
+                "config_ok": False,
+            }
+
+        logged_in = _is_account_logged_in(settings, t.account_name)
+        running_run_id = await manager.get_running_run_id(t.account_name)
+        running = False
+        if running_run_id:
+            run = runs_store.get(running_run_id)
+            running = bool(
+                run and run.task_name == t.task_name and run.status in {"running", "stopping"}
+            )
+
+        tasks.append(
+            {
+                **t.__dict__,
+                **config_summary,
+                "logged_in": logged_in,
+                "running": running,
+                "running_run_id": running_run_id if running else None,
+            }
+        )
+
+    return accounts, tasks
+
+
 @router.get("/tasks", response_class=HTMLResponse)
-async def tasks_page(request: Request):
+async def tasks_page(request: Request, ok: str = "", error: str = ""):
     redirect = _require_login(request)
     if redirect:
         return redirect
     templates = _get_templates(request)
-    accounts_store: AccountsStore = request.app.state.accounts_store
-    tasks_store: TasksStore = request.app.state.tasks_store
-
-    accounts = [a.account_name for a in accounts_store.list()]
-    tasks = [t.__dict__ for t in tasks_store.list()]
+    accounts, tasks = await _collect_accounts_and_tasks(request)
     return templates.TemplateResponse(
         request,
         "tasks.html",
@@ -220,7 +356,8 @@ async def tasks_page(request: Request):
             "accounts": accounts,
             "tasks": tasks,
             "csrf_token": issue_csrf_token(request),
-            "error": None,
+            "error": error or None,
+            "ok": ok or None,
             "form": None,
         },
     )
@@ -244,8 +381,7 @@ async def create_task(
         task_name = validate_name(task_name, label="任务名")
         account_name = validate_name(account_name, label="账号名")
     except ValueError as e:
-        accounts = [a.account_name for a in accounts_store.list()]
-        tasks = [t.__dict__ for t in tasks_store.list()]
+        accounts, tasks = await _collect_accounts_and_tasks(request)
         return templates.TemplateResponse(
             request,
             "tasks.html",
@@ -255,6 +391,7 @@ async def create_task(
                 "tasks": tasks,
                 "csrf_token": issue_csrf_token(request),
                 "error": str(e),
+                "ok": None,
                 "form": {"task_name": task_name, "account_name": account_name},
             },
             status_code=400,
@@ -289,6 +426,216 @@ async def edit_task_page(request: Request, task_name: str, ok: str = ""):
             "csrf_token": issue_csrf_token(request),
             "ok": ok == "1",
         },
+    )
+
+@router.get("/tasks/{task_name}/schedule", response_class=HTMLResponse)
+async def task_schedule_page(request: Request, task_name: str, ok: str = ""):
+    redirect = _require_login(request)
+    if redirect:
+        return redirect
+    templates = _get_templates(request)
+    tasks_store: TasksStore = request.app.state.tasks_store
+
+    task_name = validate_name(task_name, label="任务名")
+    task = tasks_store.get(task_name)
+    if not task:
+        return RedirectResponse(url="/tasks", status_code=303)
+
+    errors: list[str] = []
+    form: dict[str, Any] = {
+        "mode": "daily",
+        "daily_time": "06:00",
+        "cron_expr": "0 6 * * *",
+        "random_seconds": "0",
+        "sign_interval": "1",
+        "restart": True,
+    }
+
+    raw_text = tasks_store.read_config_text(task_name)
+    try:
+        raw = json.loads(raw_text or "{}")
+        loaded = SignConfigV3.load(raw)
+        if not loaded:
+            errors.append("当前配置无法解析，请使用 JSON 编辑修复后再调整时间。")
+        else:
+            cfg, _from_old = loaded
+            daily_time = _cron_to_time_value(cfg.sign_at)
+            form.update(
+                {
+                    "mode": "daily" if daily_time else "cron",
+                    "daily_time": daily_time or "06:00",
+                    "cron_expr": cfg.sign_at,
+                    "random_seconds": str(cfg.random_seconds),
+                    "sign_interval": str(cfg.sign_interval),
+                }
+            )
+    except json.JSONDecodeError:
+        errors.append("当前 config.json 不是合法 JSON，请先使用 JSON 编辑修复。")
+    except Exception as e:
+        errors.append(f"读取配置失败：{e}")
+
+    return templates.TemplateResponse(
+        request,
+        "task_schedule.html",
+        {
+            "request": request,
+            "task": task,
+            "csrf_token": issue_csrf_token(request),
+            "ok": ok or None,
+            "errors": errors or None,
+            "form": form,
+        },
+    )
+
+
+@router.post("/tasks/{task_name}/schedule", response_class=HTMLResponse)
+async def task_schedule_save(
+    request: Request,
+    task_name: str,
+    csrf_token: str = Form(""),
+    mode: str = Form("daily"),
+    daily_time: str = Form(""),
+    cron_expr: str = Form(""),
+    random_seconds: str = Form(""),
+    sign_interval: str = Form(""),
+    restart: str = Form(""),
+):
+    redirect = _require_login(request)
+    if redirect:
+        return redirect
+    verify_csrf_token(request, csrf_token)
+    templates = _get_templates(request)
+
+    tasks_store: TasksStore = request.app.state.tasks_store
+    runs_store: RunsStore = request.app.state.runs_store
+    manager: WorkerManager = request.app.state.worker_manager
+    settings: WebSettings = request.app.state.settings
+
+    task_name = validate_name(task_name, label="任务名")
+    task = tasks_store.get(task_name)
+    if not task:
+        return RedirectResponse(url="/tasks", status_code=303)
+
+    form = {
+        "mode": mode,
+        "daily_time": daily_time,
+        "cron_expr": cron_expr,
+        "random_seconds": random_seconds,
+        "sign_interval": sign_interval,
+        "restart": restart == "1",
+    }
+
+    errors: list[str] = []
+    sign_at_value: str | None = None
+    if mode == "daily":
+        sign_at_value = _normalize_sign_at(daily_time, errors=errors)
+    elif mode == "cron":
+        sign_at_value = _normalize_sign_at(cron_expr, errors=errors)
+    else:
+        errors.append("mode 不合法")
+
+    random_seconds_value = _parse_optional_int(
+        random_seconds, label="签到时间随机误差", errors=errors
+    )
+    sign_interval_value = _parse_optional_int(sign_interval, label="签到间隔", errors=errors)
+
+    if random_seconds_value is None:
+        random_seconds_value = 0
+    if random_seconds_value < 0:
+        errors.append("签到时间随机误差不能为负数")
+
+    if sign_interval_value is None:
+        sign_interval_value = 1
+    if sign_interval_value < 0:
+        errors.append("签到间隔不能为负数")
+
+    if errors:
+        return templates.TemplateResponse(
+            request,
+            "task_schedule.html",
+            {
+                "request": request,
+                "task": task,
+                "csrf_token": issue_csrf_token(request),
+                "ok": None,
+                "errors": errors,
+                "form": form,
+            },
+            status_code=400,
+        )
+
+    try:
+        raw_text = tasks_store.read_config_text(task_name)
+        raw = json.loads(raw_text or "{}")
+        loaded = SignConfigV3.load(raw)
+        if not loaded:
+            raise ValueError("当前配置无法解析，请使用 JSON 编辑修复后再调整时间。")
+        cfg, _from_old = loaded
+        new_raw = cfg.to_jsonable()
+        new_raw["sign_at"] = sign_at_value
+        new_raw["random_seconds"] = int(random_seconds_value)
+        new_raw["sign_interval"] = int(sign_interval_value)
+        validated = _validate_signer_config(new_raw)
+        new_text = json.dumps(validated, ensure_ascii=False, indent=2) + "\n"
+        tasks_store.write_config_text(task_name, new_text)
+        tasks_store.touch_updated_at(task_name)
+    except Exception as e:
+        return templates.TemplateResponse(
+            request,
+            "task_schedule.html",
+            {
+                "request": request,
+                "task": task,
+                "csrf_token": issue_csrf_token(request),
+                "ok": None,
+                "errors": [f"保存失败：{e}"],
+                "form": form,
+            },
+            status_code=400,
+        )
+
+    restart_requested = restart == "1"
+    restart_done = False
+    if restart_requested and task.enabled:
+        if not _is_account_logged_in(settings, task.account_name):
+            return RedirectResponse(
+                url=f"/tasks/{_quote_segment(task_name)}/schedule?ok={_quote_query('已保存（账号未登录，无法重启）')}",
+                status_code=303,
+            )
+
+        existing = await manager.get_running_run_id(task.account_name)
+        if existing:
+            run = runs_store.get(existing)
+            if run and run.task_name == task_name and run.status in {"running", "stopping"}:
+                await manager.stop(existing)
+                for _ in range(40):
+                    await asyncio.sleep(0.5)
+                    if not await manager.get_running_run_id(task.account_name):
+                        break
+
+        if not await manager.get_running_run_id(task.account_name):
+            try:
+                await manager.start(
+                    StartRunRequest(
+                        task_name=task.task_name,
+                        account_name=task.account_name,
+                        mode="run",
+                    )
+                )
+                restart_done = True
+            except Exception:
+                restart_done = False
+
+    backup_manager = getattr(request.app.state, "backup_manager", None)
+    if backup_manager:
+        await backup_manager.schedule_push("task_schedule")
+
+    ok_message = "已保存"
+    if restart_requested and task.enabled:
+        ok_message = "已保存并重启" if restart_done else "已保存（重启失败，可到任务页手动启动）"
+    return RedirectResponse(
+        url=f"/tasks/{_quote_segment(task_name)}/schedule?ok={_quote_query(ok_message)}",
+        status_code=303,
     )
 
 
@@ -390,7 +737,8 @@ async def task_wizard_save(
     }
 
     errors: list[str] = []
-    sign_at_value = (sign_at or "").strip() or "0 6 * * *"
+    sign_at_raw = (sign_at or "").strip() or "0 6 * * *"
+    sign_at_value = _normalize_sign_at(sign_at_raw, errors=errors) or sign_at_raw
     random_seconds_value = _parse_optional_int(
         random_seconds, label="签到随机秒数", errors=errors
     )
@@ -538,6 +886,81 @@ async def delete_task(request: Request, task_name: str, csrf_token: str = Form("
             await backup_manager.schedule_push("task_delete")
     return RedirectResponse(url="/tasks", status_code=303)
 
+@router.post("/tasks/{task_name}/enable")
+async def enable_task(request: Request, task_name: str, csrf_token: str = Form("")):
+    redirect = _require_login(request)
+    if redirect:
+        return redirect
+    verify_csrf_token(request, csrf_token)
+
+    tasks_store: TasksStore = request.app.state.tasks_store
+    runs_store: RunsStore = request.app.state.runs_store
+    manager: WorkerManager = request.app.state.worker_manager
+
+    task_name = validate_name(task_name, label="任务名")
+    task = tasks_store.get(task_name)
+    if not task:
+        return _redirect_tasks(error="任务不存在")
+
+    existing = await manager.get_running_run_id(task.account_name)
+    if existing:
+        run = runs_store.get(existing)
+        if run and run.task_name == task_name and run.status in {"running", "stopping"}:
+            tasks_store.set_enabled(task_name, True)
+            return _redirect_tasks(ok="任务已启用（当前已在运行）")
+        return _redirect_tasks(error="该账号已有运行中的任务，请先停止后再启用")
+
+    tasks_store.set_enabled(task_name, True)
+    settings: WebSettings = request.app.state.settings
+    if not _is_account_logged_in(settings, task.account_name):
+        return _redirect_tasks(ok="任务已启用（待账号登录后自动运行）")
+
+    try:
+        await manager.start(
+            StartRunRequest(
+                task_name=task.task_name,
+                account_name=task.account_name,
+                mode="run",
+            )
+        )
+    except Exception as e:
+        return _redirect_tasks(error=f"启用失败：{e}")
+
+    backup_manager = getattr(request.app.state, "backup_manager", None)
+    if backup_manager:
+        await backup_manager.schedule_push("task_enable")
+    return _redirect_tasks(ok="任务已启用（按计划常驻运行）")
+
+
+@router.post("/tasks/{task_name}/disable")
+async def disable_task(request: Request, task_name: str, csrf_token: str = Form("")):
+    redirect = _require_login(request)
+    if redirect:
+        return redirect
+    verify_csrf_token(request, csrf_token)
+
+    tasks_store: TasksStore = request.app.state.tasks_store
+    runs_store: RunsStore = request.app.state.runs_store
+    manager: WorkerManager = request.app.state.worker_manager
+
+    task_name = validate_name(task_name, label="任务名")
+    task = tasks_store.get(task_name)
+    if not task:
+        return _redirect_tasks(error="任务不存在")
+
+    tasks_store.set_enabled(task_name, False)
+
+    existing = await manager.get_running_run_id(task.account_name)
+    if existing:
+        run = runs_store.get(existing)
+        if run and run.task_name == task_name:
+            await manager.stop(existing)
+
+    backup_manager = getattr(request.app.state, "backup_manager", None)
+    if backup_manager:
+        await backup_manager.schedule_push("task_disable")
+    return _redirect_tasks(ok="任务已停用")
+
 
 @router.post("/tasks/{task_name}/run-once")
 async def run_once_task(request: Request, task_name: str, csrf_token: str = Form("")):
@@ -568,26 +991,4 @@ async def run_once_task(request: Request, task_name: str, csrf_token: str = Form
 
 @router.post("/tasks/{task_name}/run")
 async def run_task(request: Request, task_name: str, csrf_token: str = Form("")):
-    redirect = _require_login(request)
-    if redirect:
-        return redirect
-    verify_csrf_token(request, csrf_token)
-    tasks_store: TasksStore = request.app.state.tasks_store
-    manager: WorkerManager = request.app.state.worker_manager
-
-    task_name = validate_name(task_name, label="任务名")
-    task = tasks_store.get(task_name)
-    if not task:
-        return RedirectResponse(url="/tasks", status_code=303)
-
-    run_id = await manager.start(
-        StartRunRequest(
-            task_name=task.task_name,
-            account_name=task.account_name,
-            mode="run",
-        )
-    )
-    backup_manager = getattr(request.app.state, "backup_manager", None)
-    if backup_manager:
-        await backup_manager.schedule_push("run_start")
-    return RedirectResponse(url=f"/runs/{run_id}", status_code=303)
+    return await enable_task(request, task_name, csrf_token=csrf_token)

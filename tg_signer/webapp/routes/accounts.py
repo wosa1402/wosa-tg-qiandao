@@ -13,13 +13,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pyrogram import errors
 
 from tg_signer.core import get_client, get_proxy
+from tg_signer.webapp.manager import StartRunRequest, WorkerManager
 from tg_signer.webapp.security import (
     issue_csrf_token,
     redirect_to_login,
     verify_csrf_token,
 )
 from tg_signer.webapp.settings import WebSettings
-from tg_signer.webapp.store import AccountsStore, validate_name
+from tg_signer.webapp.store import AccountsStore, TasksStore, validate_name
 
 
 @dataclass
@@ -161,6 +162,30 @@ def _format_login_error(exc: Exception) -> str:
     if _is_error("PasswordHashInvalid"):
         return "二次密码不正确，请重试"
     return str(exc)
+
+
+async def _auto_start_enabled_tasks(request: Request, account_name: str) -> None:
+    manager: WorkerManager = request.app.state.worker_manager
+    tasks_store: TasksStore = request.app.state.tasks_store
+    existing = await manager.get_running_run_id(account_name)
+    if existing:
+        return
+
+    enabled = [t for t in tasks_store.list() if t.enabled and t.account_name == account_name]
+    if not enabled:
+        return
+
+    task = enabled[0]
+    try:
+        await manager.start(
+            StartRunRequest(
+                task_name=task.task_name,
+                account_name=task.account_name,
+                mode="run",
+            )
+        )
+    except Exception:
+        return
 
 
 router = APIRouter()
@@ -497,6 +522,7 @@ async def login_verify(
         backup_manager = getattr(request.app.state, "backup_manager", None)
         if backup_manager:
             await backup_manager.schedule_push("login")
+        await _auto_start_enabled_tasks(request, account_name)
     except Exception as e:
         message = _format_login_error(e)
         store.mark_error(account_name, message)
@@ -626,6 +652,7 @@ async def login_password(
         backup_manager = getattr(request.app.state, "backup_manager", None)
         if backup_manager:
             await backup_manager.schedule_push("login")
+        await _auto_start_enabled_tasks(request, account_name)
     except Exception as e:
         message = _format_login_error(e)
         store.mark_error(account_name, message)

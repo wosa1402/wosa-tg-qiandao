@@ -79,6 +79,10 @@ class WorkerManager:
     def has_running(self) -> bool:
         return bool(self._proc_by_run_id)
 
+    async def get_running_run_id(self, account_name: str) -> str | None:
+        async with self._lock:
+            return self._running_by_account.get(account_name)
+
     async def start(self, req: StartRunRequest) -> str:
         task_name = validate_name(req.task_name, label="任务名")
         account_name = validate_name(req.account_name, label="账号名")

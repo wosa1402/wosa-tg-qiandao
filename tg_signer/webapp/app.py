@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from tg_signer.webapp.backup import WebDavBackupManager
-from tg_signer.webapp.manager import WorkerManager
+from tg_signer.webapp.manager import StartRunRequest, WorkerManager
 from tg_signer.webapp.routes.accounts import router as accounts_router
 from tg_signer.webapp.routes.backup import router as backup_router
 from tg_signer.webapp.routes.runs import router as runs_router
@@ -141,6 +141,33 @@ def create_app(settings: Optional[WebSettings] = None) -> FastAPI:
     app.include_router(runs_router)
     app.include_router(backup_router)
 
+    async def _auto_start_enabled_tasks() -> None:
+        if _needs_settings_guidance():
+            app.state.logger.warning("未配置 Telegram API，跳过自动启动启用任务。")
+            return
+
+        tasks_store: TasksStore = app.state.tasks_store
+        manager: WorkerManager = app.state.worker_manager
+
+        for task in tasks_store.list():
+            if not task.enabled:
+                continue
+            try:
+                await manager.start(
+                    StartRunRequest(
+                        task_name=task.task_name,
+                        account_name=task.account_name,
+                        mode="run",
+                    )
+                )
+            except Exception as e:
+                app.state.logger.warning(
+                    "自动启动任务失败：task=%s account=%s err=%s",
+                    task.task_name,
+                    task.account_name,
+                    e,
+                )
+
     @app.exception_handler(PermissionError)
     async def _permission_error_handler(request: Request, exc: PermissionError):
         message = str(exc) or "permission denied"
@@ -247,6 +274,7 @@ def create_app(settings: Optional[WebSettings] = None) -> FastAPI:
             app.state.worker_manager.set_backup_scheduler(backup_manager)
             await backup_manager.pull_if_exists()
             app.state.backup_task = asyncio.create_task(backup_manager.run_scheduler())
+        await _auto_start_enabled_tasks()
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:

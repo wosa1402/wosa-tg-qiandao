@@ -230,6 +230,16 @@ class TasksStore:
         meta["updated_at"] = utc_now_iso()
         _write_json(meta_path, meta)
 
+    def set_enabled(self, task_name: str, enabled: bool) -> None:
+        task_name = validate_name(task_name, label="任务名")
+        meta_path = self._meta_path(task_name)
+        if not meta_path.exists():
+            raise ValueError("任务不存在")
+        meta = _read_json(meta_path, default=None) or {}
+        meta["enabled"] = bool(enabled)
+        meta["updated_at"] = utc_now_iso()
+        _write_json(meta_path, meta)
+
 
 @dataclass(frozen=True)
 class RunRecord:

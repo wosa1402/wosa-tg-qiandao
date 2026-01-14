@@ -100,8 +100,14 @@
 
       <h3 style="margin-top: 18px;">3) 运行计划（sign_at）</h3>
       <div class="field">
-        <label>签到时间（time 或 crontab）</label>
-        <input type="text" name="sign_at" placeholder="例如 0 6 * * * 或 06:00:00" value="{{ (form.sign_at if form else '0 6 * * *') }}" />
+        <label>每日时间（推荐）</label>
+        <input id="sign_at_time" type="time" value="" />
+        <div class="muted">选择后会自动填充下面的输入框（生成 crontab）。</div>
+      </div>
+      <div class="field">
+        <label>高级：time 或 crontab</label>
+        <input id="sign_at_input" type="text" name="sign_at" placeholder="例如 06:00 或 0 6 * * *" value="{{ (form.sign_at if form else '0 6 * * *') }}" />
+        <div class="muted">支持 HH:MM / HH:MM:SS，也支持 crontab 表达式。</div>
       </div>
       <div class="field">
         <label>签到时间随机误差（秒）</label>
@@ -133,6 +139,56 @@
         if (select.value) input.value = select.value;
       });
     })();
+
+    (function () {
+      const timeInput = document.getElementById("sign_at_time");
+      const cronInput = document.getElementById("sign_at_input");
+      if (!timeInput || !cronInput) return;
+
+      function cronToTime(value) {
+        const raw = (value || "").trim();
+        const timeMatch = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+        if (timeMatch) {
+          const hour = parseInt(timeMatch[1], 10);
+          const minute = parseInt(timeMatch[2], 10);
+          if (isNaN(hour) || isNaN(minute)) return null;
+          if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+          return String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
+        }
+        const parts = raw.split(/\s+/);
+        if (parts.length !== 5) return null;
+        if (parts[2] !== "*" || parts[3] !== "*" || parts[4] !== "*") return null;
+        const minute = parseInt(parts[0], 10);
+        const hour = parseInt(parts[1], 10);
+        if (isNaN(hour) || isNaN(minute)) return null;
+        if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+        return String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
+      }
+
+      function timeToCron(value) {
+        const raw = (value || "").trim();
+        if (!raw) return "";
+        const parts = raw.split(":");
+        if (parts.length < 2) return "";
+        const hour = parseInt(parts[0], 10);
+        const minute = parseInt(parts[1], 10);
+        if (isNaN(hour) || isNaN(minute)) return "";
+        if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "";
+        return `${minute} ${hour} * * *`;
+      }
+
+      const initial = cronToTime(cronInput.value);
+      if (initial) timeInput.value = initial;
+
+      timeInput.addEventListener("input", function () {
+        const cron = timeToCron(timeInput.value);
+        if (cron) cronInput.value = cron;
+      });
+
+      cronInput.addEventListener("input", function () {
+        const t = cronToTime(cronInput.value);
+        if (t) timeInput.value = t;
+      });
+    })();
   </script>
 {% endblock %}
-

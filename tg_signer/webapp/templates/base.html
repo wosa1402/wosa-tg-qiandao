@@ -75,6 +75,10 @@
         border-radius: 10px;
         cursor: pointer;
       }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
       .btn.primary {
         border-color: rgba(110, 168, 254, 0.35);
         background: rgba(110, 168, 254, 0.18);
@@ -89,12 +93,38 @@
         margin: 10px 0;
       }
       input[type="text"],
-      input[type="password"] {
+      input[type="password"],
+      input[type="time"],
+      textarea {
         padding: 10px 12px;
         border-radius: 10px;
         border: 1px solid var(--border);
         background: rgba(0, 0, 0, 0.18);
         color: var(--text);
+      }
+      input[readonly],
+      textarea[readonly] {
+        opacity: 0.85;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1;
+      }
+      .badge.ok {
+        border-color: rgba(46, 204, 113, 0.35);
+        background: rgba(46, 204, 113, 0.16);
+      }
+      .badge.off {
+        border-color: rgba(170, 177, 197, 0.25);
+        background: rgba(170, 177, 197, 0.08);
+        color: var(--muted);
       }
       .error {
         color: var(--danger);
