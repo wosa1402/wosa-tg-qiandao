@@ -755,7 +755,8 @@ class UserSigner(BaseUserWorker[SignConfigV3]):
         self, num_of_dialogs=20, only_once: bool = False, force_rerun: bool = False
     ):
         if self.user is None:
-            await self.login(num_of_dialogs, print_chat=True)
+            print_chat = os.environ.get("TG_SIGNER_PRINT_CHATS", "1").strip() != "0"
+            await self.login(num_of_dialogs, print_chat=print_chat)
 
         config = self.load_config(self.cfg_cls)
         if config.requires_ai:

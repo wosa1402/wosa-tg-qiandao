@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from tg_signer.config import SignConfigV3
 from tg_signer.core import get_client, get_proxy
-from tg_signer.webapp.manager import StartRunRequest, WorkerManager
+from tg_signer.webapp.manager import RunOnceRequest, WorkerManager
 from tg_signer.webapp.security import (
     issue_csrf_token,
     redirect_to_login,
@@ -507,7 +507,6 @@ async def task_schedule_save(
     templates = _get_templates(request)
 
     tasks_store: TasksStore = request.app.state.tasks_store
-    runs_store: RunsStore = request.app.state.runs_store
     manager: WorkerManager = request.app.state.worker_manager
     settings: WebSettings = request.app.state.settings
 
@@ -595,44 +594,23 @@ async def task_schedule_save(
         )
 
     restart_requested = restart == "1"
-    restart_done = False
+    applied = False
     if restart_requested and task.enabled:
-        if not _is_account_logged_in(settings, task.account_name):
-            return RedirectResponse(
-                url=f"/tasks/{_quote_segment(task_name)}/schedule?ok={_quote_query('已保存（账号未登录，无法重启）')}",
-                status_code=303,
-            )
-
-        existing = await manager.get_running_run_id(task.account_name)
-        if existing:
-            run = runs_store.get(existing)
-            if run and run.task_name == task_name and run.status in {"running", "stopping"}:
-                await manager.stop(existing)
-                for _ in range(40):
-                    await asyncio.sleep(0.5)
-                    if not await manager.get_running_run_id(task.account_name):
-                        break
-
-        if not await manager.get_running_run_id(task.account_name):
-            try:
-                await manager.start(
-                    StartRunRequest(
-                        task_name=task.task_name,
-                        account_name=task.account_name,
-                        mode="run",
-                    )
-                )
-                restart_done = True
-            except Exception:
-                restart_done = False
+        if _is_account_logged_in(settings, task.account_name):
+            await manager.ensure_account_worker(task.account_name)
+            await manager.reload_account(task.account_name)
+            applied = True
 
     backup_manager = getattr(request.app.state, "backup_manager", None)
     if backup_manager:
         await backup_manager.schedule_push("task_schedule")
 
     ok_message = "已保存"
-    if restart_requested and task.enabled:
-        ok_message = "已保存并重启" if restart_done else "已保存（重启失败，可到任务页手动启动）"
+    if restart_requested:
+        if not task.enabled:
+            ok_message = "已保存（任务未启用，未应用）"
+        else:
+            ok_message = "已保存并应用" if applied else "已保存（账号未登录，暂无法应用）"
     return RedirectResponse(
         url=f"/tasks/{_quote_segment(task_name)}/schedule?ok={_quote_query(ok_message)}",
         status_code=303,
@@ -708,6 +686,7 @@ async def task_wizard_save(
     templates = _get_templates(request)
     settings: WebSettings = request.app.state.settings
     tasks_store: TasksStore = request.app.state.tasks_store
+    manager: WorkerManager = request.app.state.worker_manager
 
     task_name = validate_name(task_name, label="任务名")
     task = tasks_store.get(task_name)
@@ -788,6 +767,9 @@ async def task_wizard_save(
             preview = json.dumps(validated, ensure_ascii=False, indent=2) + "\n"
             tasks_store.write_config_text(task_name, preview)
             tasks_store.touch_updated_at(task_name)
+            if task.enabled and _is_account_logged_in(settings, task.account_name):
+                await manager.ensure_account_worker(task.account_name)
+                await manager.reload_account(task.account_name)
             backup_manager = getattr(request.app.state, "backup_manager", None)
             if backup_manager:
                 await backup_manager.schedule_push("task_wizard_save")
@@ -832,7 +814,9 @@ async def edit_task_save(
         return redirect
     verify_csrf_token(request, csrf_token)
     templates = _get_templates(request)
+    settings: WebSettings = request.app.state.settings
     tasks_store: TasksStore = request.app.state.tasks_store
+    manager: WorkerManager = request.app.state.worker_manager
     task_name = validate_name(task_name, label="任务名")
     task = tasks_store.get(task_name)
     if not task:
@@ -844,6 +828,9 @@ async def edit_task_save(
         new_text = json.dumps(validated, ensure_ascii=False, indent=2)
         tasks_store.write_config_text(task_name, new_text + "\n")
         tasks_store.touch_updated_at(task_name)
+        if task.enabled and _is_account_logged_in(settings, task.account_name):
+            await manager.ensure_account_worker(task.account_name)
+            await manager.reload_account(task.account_name)
         backup_manager = getattr(request.app.state, "backup_manager", None)
         if backup_manager:
             await backup_manager.schedule_push("task_save")
@@ -875,12 +862,26 @@ async def delete_task(request: Request, task_name: str, csrf_token: str = Form("
     verify_csrf_token(request, csrf_token)
 
     tasks_store: TasksStore = request.app.state.tasks_store
+    manager: WorkerManager = request.app.state.worker_manager
     task_name = validate_name(task_name, label="任务名")
     task = tasks_store.get(task_name)
     if task:
+        if task.enabled:
+            current_task = await manager.get_running_task_name(task.account_name)
+            current_run_id = await manager.get_running_run_id(task.account_name)
+            if current_task == task_name and current_run_id:
+                await manager.stop_run(current_run_id)
         task_dir = tasks_store._task_dir(task_name)  # noqa: SLF001
         if task_dir.exists():
             shutil.rmtree(task_dir)
+        if task.enabled:
+            enabled_left = any(
+                t.enabled and t.account_name == task.account_name for t in tasks_store.list()
+            )
+            if enabled_left:
+                await manager.reload_account(task.account_name)
+            else:
+                await manager.shutdown_account(task.account_name)
         backup_manager = getattr(request.app.state, "backup_manager", None)
         if backup_manager:
             await backup_manager.schedule_push("task_delete")
@@ -894,42 +895,28 @@ async def enable_task(request: Request, task_name: str, csrf_token: str = Form("
     verify_csrf_token(request, csrf_token)
 
     tasks_store: TasksStore = request.app.state.tasks_store
-    runs_store: RunsStore = request.app.state.runs_store
     manager: WorkerManager = request.app.state.worker_manager
+    settings: WebSettings = request.app.state.settings
 
     task_name = validate_name(task_name, label="任务名")
     task = tasks_store.get(task_name)
     if not task:
         return _redirect_tasks(error="任务不存在")
 
-    existing = await manager.get_running_run_id(task.account_name)
-    if existing:
-        run = runs_store.get(existing)
-        if run and run.task_name == task_name and run.status in {"running", "stopping"}:
-            tasks_store.set_enabled(task_name, True)
-            return _redirect_tasks(ok="任务已启用（当前已在运行）")
-        return _redirect_tasks(error="该账号已有运行中的任务，请先停止后再启用")
-
     tasks_store.set_enabled(task_name, True)
-    settings: WebSettings = request.app.state.settings
     if not _is_account_logged_in(settings, task.account_name):
         return _redirect_tasks(ok="任务已启用（待账号登录后自动运行）")
 
     try:
-        await manager.start(
-            StartRunRequest(
-                task_name=task.task_name,
-                account_name=task.account_name,
-                mode="run",
-            )
-        )
+        await manager.ensure_account_worker(task.account_name)
+        await manager.reload_account(task.account_name)
     except Exception as e:
         return _redirect_tasks(error=f"启用失败：{e}")
 
     backup_manager = getattr(request.app.state, "backup_manager", None)
     if backup_manager:
         await backup_manager.schedule_push("task_enable")
-    return _redirect_tasks(ok="任务已启用（按计划常驻运行）")
+    return _redirect_tasks(ok="任务已启用（按计划运行）")
 
 
 @router.post("/tasks/{task_name}/disable")
@@ -940,7 +927,6 @@ async def disable_task(request: Request, task_name: str, csrf_token: str = Form(
     verify_csrf_token(request, csrf_token)
 
     tasks_store: TasksStore = request.app.state.tasks_store
-    runs_store: RunsStore = request.app.state.runs_store
     manager: WorkerManager = request.app.state.worker_manager
 
     task_name = validate_name(task_name, label="任务名")
@@ -950,11 +936,18 @@ async def disable_task(request: Request, task_name: str, csrf_token: str = Form(
 
     tasks_store.set_enabled(task_name, False)
 
-    existing = await manager.get_running_run_id(task.account_name)
-    if existing:
-        run = runs_store.get(existing)
-        if run and run.task_name == task_name:
-            await manager.stop(existing)
+    current_task = await manager.get_running_task_name(task.account_name)
+    current_run_id = await manager.get_running_run_id(task.account_name)
+    if current_task == task_name and current_run_id:
+        await manager.stop_run(current_run_id)
+
+    enabled_left = any(
+        t.enabled and t.account_name == task.account_name for t in tasks_store.list()
+    )
+    if enabled_left:
+        await manager.reload_account(task.account_name)
+    else:
+        await manager.shutdown_account(task.account_name)
 
     backup_manager = getattr(request.app.state, "backup_manager", None)
     if backup_manager:
@@ -976,11 +969,11 @@ async def run_once_task(request: Request, task_name: str, csrf_token: str = Form
     if not task:
         return RedirectResponse(url="/tasks", status_code=303)
 
-    run_id = await manager.start(
-        StartRunRequest(
+    run_id = await manager.run_once(
+        RunOnceRequest(
             task_name=task.task_name,
             account_name=task.account_name,
-            mode="run_once",
+            num_of_dialogs=50,
         )
     )
     backup_manager = getattr(request.app.state, "backup_manager", None)

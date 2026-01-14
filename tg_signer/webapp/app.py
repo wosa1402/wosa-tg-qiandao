@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from tg_signer.webapp.backup import WebDavBackupManager
-from tg_signer.webapp.manager import StartRunRequest, WorkerManager
+from tg_signer.webapp.manager import WorkerManager
 from tg_signer.webapp.routes.accounts import router as accounts_router
 from tg_signer.webapp.routes.backup import router as backup_router
 from tg_signer.webapp.routes.runs import router as runs_router
@@ -148,24 +148,24 @@ def create_app(settings: Optional[WebSettings] = None) -> FastAPI:
 
         tasks_store: TasksStore = app.state.tasks_store
         manager: WorkerManager = app.state.worker_manager
+        sessions_dir: Path = app.state.settings.sessions_dir
 
-        for task in tasks_store.list():
-            if not task.enabled:
+        accounts: set[str] = {
+            t.account_name for t in tasks_store.list() if t.enabled and t.account_name
+        }
+        for account_name in sorted(accounts):
+            candidates = [
+                sessions_dir / f"{account_name}.session_string",
+                sessions_dir / f"{account_name}.session",
+            ]
+            if not any(p.exists() for p in candidates):
                 continue
             try:
-                await manager.start(
-                    StartRunRequest(
-                        task_name=task.task_name,
-                        account_name=task.account_name,
-                        mode="run",
-                    )
-                )
+                await manager.ensure_account_worker(account_name)
+                await manager.reload_account(account_name)
             except Exception as e:
                 app.state.logger.warning(
-                    "自动启动任务失败：task=%s account=%s err=%s",
-                    task.task_name,
-                    task.account_name,
-                    e,
+                    "自动启动账号 worker 失败：account=%s err=%s", account_name, e
                 )
 
     @app.exception_handler(PermissionError)

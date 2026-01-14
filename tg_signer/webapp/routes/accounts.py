@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pyrogram import errors
 
 from tg_signer.core import get_client, get_proxy
-from tg_signer.webapp.manager import StartRunRequest, WorkerManager
+from tg_signer.webapp.manager import WorkerManager
 from tg_signer.webapp.security import (
     issue_csrf_token,
     redirect_to_login,
@@ -167,23 +167,15 @@ def _format_login_error(exc: Exception) -> str:
 async def _auto_start_enabled_tasks(request: Request, account_name: str) -> None:
     manager: WorkerManager = request.app.state.worker_manager
     tasks_store: TasksStore = request.app.state.tasks_store
-    existing = await manager.get_running_run_id(account_name)
-    if existing:
-        return
-
-    enabled = [t for t in tasks_store.list() if t.enabled and t.account_name == account_name]
+    enabled = [
+        t for t in tasks_store.list() if t.enabled and t.account_name == account_name
+    ]
     if not enabled:
         return
 
-    task = enabled[0]
     try:
-        await manager.start(
-            StartRunRequest(
-                task_name=task.task_name,
-                account_name=task.account_name,
-                mode="run",
-            )
-        )
+        await manager.ensure_account_worker(account_name)
+        await manager.reload_account(account_name)
     except Exception:
         return
 
@@ -674,6 +666,7 @@ async def logout_account(request: Request, account_name: str, csrf_token: str = 
     account_name = validate_name(account_name, label="账号名")
     settings: WebSettings = request.app.state.settings
     store: AccountsStore = request.app.state.accounts_store
+    manager: WorkerManager = request.app.state.worker_manager
 
     proxy = get_proxy()
     client = get_client(account_name, proxy, workdir=settings.sessions_dir)
@@ -686,6 +679,7 @@ async def logout_account(request: Request, account_name: str, csrf_token: str = 
                 if p.exists():
                     p.unlink()
         store.mark_logout(account_name)
+        await manager.shutdown_account(account_name)
         backup_manager = getattr(request.app.state, "backup_manager", None)
         if backup_manager:
             await backup_manager.schedule_push("logout")

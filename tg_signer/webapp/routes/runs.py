@@ -66,7 +66,7 @@ async def stop_run(request: Request, run_id: str, csrf_token: str = Form("")):
         return redirect
     verify_csrf_token(request, csrf_token)
     manager: WorkerManager = request.app.state.worker_manager
-    await manager.stop(run_id)
+    await manager.stop_run(run_id)
     return RedirectResponse(url=f"/runs/{run_id}", status_code=303)
 
 
