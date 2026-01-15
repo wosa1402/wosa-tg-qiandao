@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /app
+WORKDIR /opt/tg-signer
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends tzdata && \
@@ -16,13 +16,17 @@ RUN apt-get update && \
 
 COPY pyproject.toml README.md README_EN.md LICENSE ./
 COPY tg_signer ./tg_signer
-COPY docs ./docs
 
+# 可选：安装额外依赖组（例如 speedup）
+# 示例：docker build --build-arg PIP_EXTRAS=speedup -f docker/Source.Dockerfile -t tg-signer:latest .
+ARG PIP_EXTRAS=""
 RUN pip install --no-cache-dir -U pip && \
-    pip install --no-cache-dir ".[web]"
+    if [ -n "${PIP_EXTRAS}" ]; then \
+      pip install --no-cache-dir ".[${PIP_EXTRAS}]"; \
+    else \
+      pip install --no-cache-dir .; \
+    fi
 
-ENV HOST=0.0.0.0
-ENV PORT=8000
-EXPOSE 8000
+ENTRYPOINT ["tg-signer"]
+CMD ["--help"]
 
-CMD ["tg-signer-web"]

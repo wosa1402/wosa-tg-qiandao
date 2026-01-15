@@ -1,0 +1,49 @@
+# 目标：构建镜像时只带“项目源码与必要文件”，不把本地/历史运行痕迹与敏感数据打进镜像
+
+# Git / CI / 辅助目录
+.git
+.github
+.claude
+
+# Python 缓存与测试工具缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.tox/
+.cache/
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+
+# 运行痕迹 / 敏感数据（务必不要打进镜像）
+.signer/
+.tg-signer-web/
+.nicegui/
+.agent/
+logs/
+*.log
+*.session
+*.session-journal
+*.session_string
+*.db
+*.sqlite3
+
+# 构建产物
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# 编辑器与系统杂项
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 本地临时目录
+.tmp/
+.pip-cache/
