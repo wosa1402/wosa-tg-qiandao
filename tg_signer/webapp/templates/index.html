@@ -3,15 +3,118 @@
 {% set title = "仪表盘 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel">
-    <h2 style="margin-top: 0">仪表盘</h2>
-    <p class="muted">先把账号登录、任务配置、运行与日志打通。</p>
-    <ul class="muted">
-      <li>账号登录：/accounts</li>
-      <li>任务管理：/tasks</li>
-      <li>运行与日志：/runs</li>
-      <li>WebDAV 备份：/backup</li>
-      <li>系统设置：/settings</li>
-    </ul>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue">👤</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.accounts_logged_in }}</div>
+        <div class="stat-label">已登录账号 / {{ stats.accounts_total }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">📋</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.tasks_enabled }}</div>
+        <div class="stat-label">已启用任务 / {{ stats.tasks_total }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange">▶️</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.runs_running }}</div>
+        <div class="stat-label">运行中实例</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red">❌</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ stats.runs_failed_recent }}</div>
+        <div class="stat-label">最近失败（最近 50 次）</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-lg">
+    <div class="card-header">
+      <div class="card-title">⚡ 快捷操作</div>
+    </div>
+    <div class="card-body">
+      <div class="quick-actions">
+        <a class="quick-action" href="/accounts">
+          <div class="quick-action-icon blue">👤</div>
+          <div class="quick-action-text">账号管理</div>
+        </a>
+        <a class="quick-action" href="/tasks">
+          <div class="quick-action-icon green">📋</div>
+          <div class="quick-action-text">任务配置</div>
+        </a>
+        <a class="quick-action" href="/runs">
+          <div class="quick-action-icon orange">▶️</div>
+          <div class="quick-action-text">运行记录</div>
+        </a>
+        <a class="quick-action" href="/backup">
+          <div class="quick-action-icon purple">☁️</div>
+          <div class="quick-action-text">备份恢复</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📜 最近运行</div>
+      <a class="btn btn-secondary btn-sm" href="/runs">查看全部</a>
+    </div>
+    {% if recent_runs|length == 0 %}
+      <div class="empty-state">
+        <div class="empty-state-icon">🕒</div>
+        <div class="empty-state-title">暂无运行记录</div>
+        <div class="empty-state-text">去任务页发起一次“运行一次”试试。</div>
+        <a class="btn btn-primary" href="/tasks">前往任务配置</a>
+      </div>
+    {% else %}
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>run_id</th>
+              <th>任务</th>
+              <th>账号</th>
+              <th>状态</th>
+              <th>开始</th>
+              <th>结束</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in recent_runs %}
+              <tr>
+                <td><code>{{ r.run_id }}</code></td>
+                <td>{{ r.task_name }}</td>
+                <td>{{ r.account_name }}</td>
+                <td>
+                  {% if r.status == "running" %}
+                    <span class="badge badge-info">运行中</span>
+                  {% elif r.status == "success" %}
+                    <span class="badge badge-success">成功</span>
+                  {% elif r.status == "failed" %}
+                    <span class="badge badge-danger">失败</span>
+                  {% elif r.status == "stopped" %}
+                    <span class="badge badge-muted">已停止</span>
+                  {% elif r.status == "stopping" %}
+                    <span class="badge badge-warning">停止中</span>
+                  {% else %}
+                    <span class="badge badge-muted">{{ r.status }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-secondary" style="font-size: 12px;">{{ r.started_at or "-" }}</td>
+                <td class="text-secondary" style="font-size: 12px;">{{ r.finished_at or "-" }}</td>
+                <td><a class="btn btn-secondary btn-sm" href="/runs/{{ r.run_id }}">查看</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
   </div>
 {% endblock %}

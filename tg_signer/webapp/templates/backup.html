@@ -3,46 +3,65 @@
 {% set title = "备份 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel">
-    <h2 style="margin-top: 0">备份（WebDAV）</h2>
+  {% if ok %}
+    <div class="alert alert-success">操作成功</div>
+  {% endif %}
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
 
-    {% if ok %}
-      <p class="ok">操作成功</p>
-    {% endif %}
-    {% if error %}
-      <p class="error">{{ error }}</p>
-    {% endif %}
-
-    {% if status is none %}
-      <p class="muted">当前未配置 WebDAV 备份，请先在 /settings 完成配置。</p>
-    {% else %}
-      <div class="panel">
-        <div class="muted">远端地址</div>
-        <div><code style="font-size: 12px;">{{ status.remote_url }}</code></div>
-        <div style="height: 10px;"></div>
-        <div class="row">
-          <div class="muted">上次拉取：{{ status.last_pull_at or "-" }}</div>
-          <div class="muted">上次推送：{{ status.last_push_at or "-" }}</div>
+  {% if status is none %}
+    <div class="empty-state">
+      <div class="empty-state-icon">☁️</div>
+      <div class="empty-state-title">尚未配置 WebDAV 备份</div>
+      <div class="empty-state-text">请先在系统设置中填写 WebDAV 信息。</div>
+      <a class="btn btn-primary" href="/settings">前往设置</a>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">☁️ 备份（WebDAV）</div>
+        <a class="btn btn-secondary btn-sm" href="/settings">设置</a>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <div class="form-label">远端地址</div>
+          <div><code>{{ status.remote_url }}</code></div>
         </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <div class="form-label">上次拉取</div>
+            <div class="text-secondary">{{ status.last_pull_at or "-" }}</div>
+          </div>
+          <div class="form-group">
+            <div class="form-label">上次推送</div>
+            <div class="text-secondary">{{ status.last_push_at or "-" }}</div>
+          </div>
+        </div>
+
         {% if status.last_error %}
-          <p class="error">{{ status.last_error }}</p>
+          <div class="alert alert-danger">{{ status.last_error }}</div>
         {% endif %}
-      </div>
 
-      <div class="row">
-        <form method="post" action="/backup/pull">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button class="btn danger" type="submit">从 WebDAV 恢复（覆盖本地）</button>
-        </form>
-        <form method="post" action="/backup/push">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button class="btn primary" type="submit">立即备份到 WebDAV</button>
-        </form>
+        <p class="text-secondary" style="font-size: 12px;">
+          提示：在无持久化卷的平台上，建议开启定时备份，并配置备份加密密钥。
+        </p>
       </div>
-
-      <p class="muted" style="margin-top: 12px;">
-        提示：在无持久化卷的平台上，建议开启定时备份，并配置备份加密密钥。
-      </p>
-    {% endif %}
-  </div>
+      <div class="card-footer">
+        <div class="btn-group">
+          <form method="post" action="/backup/pull">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="btn btn-danger" type="submit">从 WebDAV 恢复（覆盖本地）</button>
+          </form>
+        </div>
+        <div class="btn-group">
+          <form method="post" action="/backup/push">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="btn btn-primary" type="submit">立即备份到 WebDAV</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}

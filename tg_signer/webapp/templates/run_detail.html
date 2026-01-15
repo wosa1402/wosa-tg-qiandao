@@ -3,58 +3,78 @@
 {% set title = "运行详情 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel">
-    <div class="row">
-      <h2 style="margin: 0;">运行详情</h2>
-      <a class="btn" href="/runs">返回</a>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📌 运行详情</div>
+      <div class="btn-group">
+        <a class="btn btn-secondary btn-sm" href="/runs">返回</a>
+        {% if run.status == "running" %}
+          <form method="post" action="/runs/{{ run.run_id }}/stop" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="btn btn-danger btn-sm" type="submit">停止</button>
+          </form>
+        {% endif %}
+      </div>
     </div>
 
-    <div style="height: 10px;"></div>
-    <div class="panel">
-      <div class="row">
-        <div>
-          <div class="muted">run_id</div>
-          <code>{{ run.run_id }}</code>
-        </div>
-        <div>
-          <div class="muted">任务</div>
-          <code>{{ run.task_name }}</code>
-        </div>
-        <div>
-          <div class="muted">账号</div>
-          <code>{{ run.account_name }}</code>
-        </div>
-        <div>
-          <div class="muted">状态</div>
-          <span class="muted">{{ run.status }}</span>
-        </div>
+    <div class="card-body">
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>run_id</th>
+              <th>任务</th>
+              <th>账号</th>
+              <th>模式</th>
+              <th>状态</th>
+              <th>开始</th>
+              <th>结束</th>
+              <th>exit_code</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>{{ run.run_id }}</code></td>
+              <td>{{ run.task_name }}</td>
+              <td>{{ run.account_name }}</td>
+              <td class="text-secondary">{{ run.mode }}</td>
+              <td>
+                {% if run.status == "running" %}
+                  <span class="badge badge-info">运行中</span>
+                {% elif run.status == "success" %}
+                  <span class="badge badge-success">成功</span>
+                {% elif run.status == "failed" %}
+                  <span class="badge badge-danger">失败</span>
+                {% elif run.status == "stopped" %}
+                  <span class="badge badge-muted">已停止</span>
+                {% elif run.status == "stopping" %}
+                  <span class="badge badge-warning">停止中</span>
+                {% else %}
+                  <span class="badge badge-muted">{{ run.status }}</span>
+                {% endif %}
+              </td>
+              <td class="text-secondary" style="font-size: 12px;">{{ run.started_at or "-" }}</td>
+              <td class="text-secondary" style="font-size: 12px;">{{ run.finished_at or "-" }}</td>
+              <td class="text-secondary" style="font-size: 12px;">{{ run.exit_code if run.exit_code is not none else "-" }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div style="height: 10px;"></div>
-      <div class="row">
-        <div class="muted">开始：{{ run.started_at or "-" }}</div>
-        <div class="muted">结束：{{ run.finished_at or "-" }}</div>
-        <div class="muted">exit_code：{{ run.exit_code if run.exit_code is not none else "-" }}</div>
-      </div>
+
       {% if run.error_message %}
-        <p class="error">{{ run.error_message }}</p>
-      {% endif %}
-
-      {% if run.status == "running" %}
-        <form method="post" action="/runs/{{ run.run_id }}/stop">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button class="btn danger" type="submit">停止</button>
-        </form>
+        <div class="alert alert-danger" style="margin-top: var(--spacing-md);">{{ run.error_message }}</div>
       {% endif %}
     </div>
 
-    <div style="height: 12px;"></div>
-
-    <div class="panel">
-      <div class="row">
-        <h3 style="margin: 0;">日志</h3>
-        <span class="muted">实时刷新（SSE）</span>
+    <div class="card-footer">
+      <div class="text-secondary">日志：实时刷新（SSE）</div>
+      <div class="btn-group">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="scrollLogsBottom()">⬇️ 滚动到底部</button>
       </div>
-      <pre id="logs" style="white-space: pre-wrap; margin: 10px 0 0; font-size: 12px; line-height: 1.4; max-height: 520px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: rgba(0,0,0,0.18);"></pre>
+    </div>
+
+    <div class="card-body" style="padding-top: 0;">
+      <pre id="logs" class="log-container"></pre>
     </div>
   </div>
 
@@ -63,6 +83,10 @@
       const logs = document.getElementById("logs");
       function append(line) {
         logs.textContent += line + "\\n";
+        logs.scrollTop = logs.scrollHeight;
+      }
+
+      window.scrollLogsBottom = function () {
         logs.scrollTop = logs.scrollHeight;
       }
 
@@ -76,4 +100,3 @@
     })();
   </script>
 {% endblock %}
-

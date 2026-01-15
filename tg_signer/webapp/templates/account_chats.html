@@ -3,55 +3,60 @@
 {% set title = "最近对话 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel">
-    <div class="row">
-      <h2 style="margin: 0;">最近对话（chat_id）</h2>
-      <a class="btn" href="/accounts">返回账号</a>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">💬 最近对话（chat_id）</div>
+      <a class="btn btn-secondary btn-sm" href="/accounts">返回账号</a>
     </div>
+    <div class="card-body">
+      <p class="text-secondary mb-md">
+        账号：<code>{{ account_name }}</code>，
+        当前拉取：<code>{{ limit }}</code> 条（可在地址栏用 <code>?n=100</code> 调整，最大 200）。
+      </p>
 
-    <p class="muted">
-      账号：<code>{{ account_name }}</code>，
-      当前拉取：<code>{{ limit }}</code> 条（可在地址栏用 <code>?n=100</code> 调整，最大 200）。
-    </p>
+      {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
 
-    {% if error %}
-      <p class="error">{{ error }}</p>
-    {% endif %}
-
-    {% if items|length == 0 %}
-      <p class="muted">暂无数据。请确认已登录 Telegram 账号，并且目标对话在最近联系人里。</p>
-    {% else %}
-      <div class="panel" style="padding: 0;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="text-align: left;">
-              <th style="padding: 12px; border-bottom: 1px solid var(--border); width: 220px;">chat_id</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border); width: 220px;">类型</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">名称</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border); width: 140px;">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for c in items %}
-              {% set display = (c.title or ((c.first_name or "") ~ " " ~ (c.last_name or "")).strip() or (("@" ~ c.username) if c.username else "") or "(未命名对话)") %}
+      {% if items|length == 0 %}
+        <div class="empty-state">
+          <div class="empty-state-icon">🗂️</div>
+          <div class="empty-state-title">暂无对话数据</div>
+          <div class="empty-state-text">请确认已登录 Telegram 账号，并且目标对话在最近联系人里。</div>
+        </div>
+      {% else %}
+        <div class="table-container">
+          <table class="table">
+            <thead>
               <tr>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code class="chat-id">{{ c.id }}</code></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ c.type }}</span></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                  <div>{{ display }}</div>
-                  {% if c.username %}
-                    <div class="muted">@{{ c.username }}</div>
-                  {% endif %}
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                  <button class="btn" type="button" onclick="copyText('{{ c.id }}')">复制</button>
-                </td>
+                <th>chat_id</th>
+                <th>类型</th>
+                <th>名称</th>
+                <th>操作</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% endif %}
+            </thead>
+            <tbody>
+              {% for c in items %}
+                {% set display = (c.title or ((c.first_name or "") ~ " " ~ (c.last_name or "")).strip() or (("@" ~ c.username) if c.username else "") or "(未命名对话)") %}
+                <tr>
+                  <td><code class="chat-id">{{ c.id }}</code></td>
+                  <td class="text-secondary">{{ c.type }}</td>
+                  <td>
+                    <div>{{ display }}</div>
+                    {% if c.username %}
+                      <div class="text-muted">@{{ c.username }}</div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="copyText('{{ c.id }}')">复制</button>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
   </div>
 
   <script>
@@ -64,4 +69,3 @@
     }
   </script>
 {% endblock %}
-

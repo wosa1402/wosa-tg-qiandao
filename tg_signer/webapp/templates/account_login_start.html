@@ -3,21 +3,29 @@
 {% set title = "账号登录 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel" style="max-width: 560px;">
-    <h2 style="margin-top: 0">登录账号：<code>{{ account_name }}</code></h2>
-    <p class="muted">输入手机号开始登录（验证码将发送到 Telegram / 短信）。</p>
-    {% if error %}
-      <p class="error">{{ error }}</p>
-    {% endif %}
+  <div class="card" style="max-width: 720px;">
+    <div class="card-header">
+      <div class="card-title">📲 登录账号：<code>{{ account_name }}</code></div>
+      <a class="btn btn-secondary btn-sm" href="/accounts">返回</a>
+    </div>
+    <div class="card-body">
+      <p class="text-secondary mb-md">输入手机号开始登录（验证码将发送到 Telegram / 短信）。</p>
+      {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
 
-    <form method="post" action="/accounts/{{ account_name }}/login/start">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <div class="field">
-        <label>手机号</label>
-        <input type="text" name="phone_number" placeholder="+8613800138000" required />
-      </div>
-      <button class="btn primary" type="submit">发送验证码</button>
-      <a class="btn" href="/accounts">返回</a>
-    </form>
+      <form method="post" action="/accounts/{{ account_name }}/login/start">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">手机号</label>
+            <input class="form-input" type="text" name="phone_number" placeholder="+8613800138000" required />
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" type="submit">发送验证码</button>
+        </div>
+      </form>
+    </div>
   </div>
 {% endblock %}

@@ -3,31 +3,41 @@
 {% set title = "验证码 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel" style="max-width: 560px;">
-    <h2 style="margin-top: 0">验证码：<code>{{ account_name }}</code></h2>
-    <p class="muted">请输入你收到的验证码。</p>
-    {% if error %}
-      <p class="error">{{ error }}</p>
-    {% endif %}
-    {% if notice %}
-      <p class="ok">{{ notice }}</p>
-    {% endif %}
+  <div class="card" style="max-width: 720px;">
+    <div class="card-header">
+      <div class="card-title">🔐 验证码：<code>{{ account_name }}</code></div>
+      <a class="btn btn-secondary btn-sm" href="/accounts/{{ account_name }}/login">返回</a>
+    </div>
+    <div class="card-body">
+      <p class="text-secondary mb-md">请输入你收到的验证码。</p>
+      {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
+      {% if notice %}
+        <div class="alert alert-success">{{ notice }}</div>
+      {% endif %}
 
-    <form method="post" action="/accounts/{{ account_name }}/login/verify">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <input type="hidden" name="login_id" value="{{ login_id }}" />
-      <div class="field">
-        <label>验证码</label>
-        <input type="text" name="code" placeholder="12345" required />
-      </div>
-      <button class="btn primary" type="submit">验证并登录</button>
-      <a class="btn" href="/accounts/{{ account_name }}/login">返回</a>
-    </form>
+      <form method="post" action="/accounts/{{ account_name }}/login/verify">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="login_id" value="{{ login_id }}" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">验证码</label>
+            <input class="form-input" type="text" name="code" placeholder="12345" required />
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" type="submit">验证并登录</button>
+        </div>
+      </form>
 
-    <form method="post" action="/accounts/{{ account_name }}/login/resend" style="margin-top: 10px;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <input type="hidden" name="login_id" value="{{ login_id }}" />
-      <button class="btn" type="submit">重新发送验证码</button>
-    </form>
+      <div style="height: var(--spacing-md);"></div>
+
+      <form method="post" action="/accounts/{{ account_name }}/login/resend">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="login_id" value="{{ login_id }}" />
+        <button class="btn btn-secondary" type="submit">重新发送验证码</button>
+      </form>
+    </div>
   </div>
 {% endblock %}

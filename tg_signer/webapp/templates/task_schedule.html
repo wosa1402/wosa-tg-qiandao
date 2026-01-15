@@ -3,91 +3,115 @@
 {% set title = "时间设置 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel" style="max-width: 980px;">
-    <div class="row">
-      <h2 style="margin: 0;">时间设置：<code>{{ task.task_name }}</code></h2>
-      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <a class="btn" href="/tasks">返回任务列表</a>
-        <a class="btn" href="/tasks/{{ task.task_name }}/wizard">向导配置</a>
-        <a class="btn" href="/tasks/{{ task.task_name }}/edit">JSON 编辑</a>
+  <div class="card" style="max-width: 980px;">
+    <div class="card-header">
+      <div class="card-title">⏰ 时间设置：<code>{{ task.task_name }}</code></div>
+      <div class="btn-group">
+        <a class="btn btn-secondary btn-sm" href="/tasks">返回任务列表</a>
+        <a class="btn btn-secondary btn-sm" href="/tasks/{{ task.task_name }}/wizard">向导配置</a>
+        <a class="btn btn-secondary btn-sm" href="/tasks/{{ task.task_name }}/edit">JSON 编辑</a>
       </div>
     </div>
 
-    <p class="muted">
-      这里主要配置 <code>sign_at</code>/<code>random_seconds</code>/<code>sign_interval</code>。
-      注意：任务启动后会读取一次配置，修改时间后建议勾选“保存后重启”使其立即生效。
-    </p>
+    <div class="card-body">
+      <p class="text-secondary mb-md">
+        这里主要配置 <code>sign_at</code>/<code>random_seconds</code>/<code>sign_interval</code>。
+        已启用任务勾选“保存后应用”可让后台立即 reload 生效。
+      </p>
 
-    {% if ok %}
-      <p class="ok">{{ ok }}</p>
-    {% endif %}
+      {% if ok %}
+        <div class="alert alert-success">{{ ok }}</div>
+      {% endif %}
 
-    {% if errors %}
-      <div class="error">
-        {% for err in errors %}
-          <div>{{ err }}</div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    <form method="post" action="/tasks/{{ task.task_name }}/schedule">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-
-      <h3 style="margin-top: 6px;">1) 选择模式</h3>
-      <div class="field">
-        <label>时间模式</label>
-        <div style="display: flex; gap: 14px; flex-wrap: wrap;">
-          <label style="display: inline-flex; align-items: center; gap: 8px;">
-            <input type="radio" name="mode" value="daily" {% if (form and form.mode == "daily") or (not form) %}checked{% endif %} />
-            每天固定时间（推荐）
-          </label>
-          <label style="display: inline-flex; align-items: center; gap: 8px;">
-            <input type="radio" name="mode" value="cron" {% if form and form.mode == "cron" %}checked{% endif %} />
-            高级 crontab
-          </label>
+      {% if errors %}
+        <div class="alert alert-danger">
+          {% for err in errors %}
+            <div>{{ err }}</div>
+          {% endfor %}
         </div>
-      </div>
+      {% endif %}
 
-      <div id="daily_panel" class="panel" style="padding: 12px; margin-top: 10px;">
-        <div class="field">
-          <label>每天几点执行</label>
-          <input id="daily_time_input" type="time" name="daily_time" value="{{ (form.daily_time if form else '06:00') }}" />
-          <div class="muted">选择时间后会自动生成对应 crontab（分钟 小时 * * *）。</div>
+      <form method="post" action="/tasks/{{ task.task_name }}/schedule">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+        <div class="card mb-lg">
+          <div class="card-header">
+            <div class="card-title">1) 选择模式</div>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">时间模式</label>
+              <div class="flex gap-md items-center" style="flex-wrap: wrap;">
+                <label class="text-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
+                  <input type="radio" name="mode" value="daily" {% if (form and form.mode == "daily") or (not form) %}checked{% endif %} />
+                  每天固定时间（推荐）
+                </label>
+                <label class="text-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
+                  <input type="radio" name="mode" value="cron" {% if form and form.mode == "cron" %}checked{% endif %} />
+                  高级 crontab
+                </label>
+              </div>
+            </div>
+
+            <div id="daily_panel" class="card" style="margin-top: var(--spacing-md);">
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">每天几点执行</label>
+                    <input id="daily_time_input" class="form-input" type="time" name="daily_time" value="{{ (form.daily_time if form else '06:00') }}" />
+                    <div class="form-hint">选择时间后会自动生成对应 crontab（分钟 小时 * * *）。</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">生成的 crontab（只读）</label>
+                    <input id="daily_cron_preview" class="form-input" type="text" value="" readonly />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="cron_panel" class="card" style="margin-top: var(--spacing-md);">
+              <div class="card-body">
+                <div class="form-group">
+                  <label class="form-label">crontab 表达式</label>
+                  <input id="cron_expr_input" class="form-input" type="text" name="cron_expr" placeholder="例如 0 6 * * *" value="{{ (form.cron_expr if form else '0 6 * * *') }}" />
+                  <div class="form-hint">支持 HH:MM 这种时间格式，也支持标准 crontab 表达式。</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="field">
-          <label>生成的 crontab（只读）</label>
-          <input id="daily_cron_preview" type="text" value="" readonly />
+
+        <div class="card mb-lg">
+          <div class="card-header">
+            <div class="card-title">2) 计划参数</div>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">签到时间随机误差（秒）</label>
+                <input class="form-input" type="text" name="random_seconds" value="{{ (form.random_seconds if form else '0') }}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">多 chat 连续签到间隔（秒）</label>
+                <input class="form-input" type="text" name="sign_interval" value="{{ (form.sign_interval if form else '1') }}" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">保存后应用（仅对“已启用”任务生效）</label>
+              <label class="text-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
+                <input type="checkbox" name="restart" value="1" {% if form and form.restart %}checked{% endif %} />
+                保存后尝试让后台立即 reload 生效
+              </label>
+            </div>
+
+            <div class="btn-group">
+              <button class="btn btn-primary" type="submit">保存</button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div id="cron_panel" class="panel" style="padding: 12px; margin-top: 10px;">
-        <div class="field">
-          <label>crontab 表达式</label>
-          <input id="cron_expr_input" type="text" name="cron_expr" placeholder="例如 0 6 * * *" value="{{ (form.cron_expr if form else '0 6 * * *') }}" />
-          <div class="muted">支持 HH:MM 这种时间格式，也支持标准 crontab 表达式。</div>
-        </div>
-      </div>
-
-      <h3 style="margin-top: 18px;">2) 计划参数</h3>
-      <div class="field">
-        <label>签到时间随机误差（秒）</label>
-        <input type="text" name="random_seconds" value="{{ (form.random_seconds if form else '0') }}" />
-      </div>
-      <div class="field">
-        <label>多 chat 连续签到间隔（秒）</label>
-        <input type="text" name="sign_interval" value="{{ (form.sign_interval if form else '1') }}" />
-      </div>
-
-      <div class="field">
-        <label>保存后重启（仅对“已启用”任务生效）</label>
-        <label style="display: inline-flex; align-items: center; gap: 8px;">
-          <input type="checkbox" name="restart" value="1" {% if form and form.restart %}checked{% endif %} />
-          保存后尝试重启任务（使新时间立刻生效）
-        </label>
-      </div>
-
-      <button class="btn primary" type="submit">保存</button>
-    </form>
+      </form>
+    </div>
   </div>
 
   <script>
@@ -132,4 +156,3 @@
     })();
   </script>
 {% endblock %}
-

@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TG Signer - UI 预览</title>
+  <style>
+    /* ============================================
+       新 UI 设计 - 现代化深色主题
+       ============================================ */
+
+    :root {
+      /* 主色调 - Telegram 蓝色系 */
+      --primary: #0088cc;
+      --primary-light: #29b6f6;
+      --primary-dark: #006ba1;
+      --primary-bg: rgba(0, 136, 204, 0.12);
+      --primary-border: rgba(0, 136, 204, 0.3);
+
+      /* 背景色 */
+      --bg-base: #0d1117;
+      --bg-surface: #161b22;
+      --bg-elevated: #21262d;
+      --bg-overlay: #30363d;
+
+      /* 文字色 */
+      --text-primary: #f0f6fc;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+
+      /* 边框 */
+      --border-default: #30363d;
+      --border-muted: #21262d;
+
+      /* 状态色 */
+      --success: #3fb950;
+      --success-bg: rgba(63, 185, 80, 0.15);
+      --warning: #d29922;
+      --warning-bg: rgba(210, 153, 34, 0.15);
+      --danger: #f85149;
+      --danger-bg: rgba(248, 81, 73, 0.15);
+      --info: #58a6ff;
+      --info-bg: rgba(88, 166, 255, 0.15);
+
+      /* 间距 */
+      --spacing-xs: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --spacing-xl: 32px;
+
+      /* 圆角 */
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+
+      /* 动画 */
+      --transition-fast: 150ms ease;
+      --transition-normal: 250ms ease;
+
+      /* 侧边栏宽度 */
+      --sidebar-width: 260px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ============================================
+       布局
+       ============================================ */
+
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-default);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .logo-version {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: normal;
+    }
+
+    /* 导航菜单 */
+    .nav-menu {
+      flex: 1;
+      padding: var(--spacing-md);
+      overflow-y: auto;
+    }
+
+    .nav-section {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .nav-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: var(--spacing-sm) var(--spacing-sm);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all var(--transition-fast);
+      margin-bottom: 2px;
+      cursor: pointer;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--primary-bg);
+      color: var(--primary-light);
+    }
+
+    .nav-item-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .nav-item-badge {
+      margin-left: auto;
+      background: var(--danger);
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    /* 侧边栏底部 */
+    .sidebar-footer {
+      padding: var(--spacing-md);
+      border-top: 1px solid var(--border-default);
+    }
+
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm);
+      border-radius: var(--radius-md);
+      background: var(--bg-elevated);
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* 主内容区 */
+    .main-content {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+    }
+
+    /* 顶部栏 */
+    .topbar {
+      height: 60px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-default);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--spacing-lg);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(10px);
+      background: rgba(22, 27, 34, 0.85);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .breadcrumb a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      color: var(--primary-light);
+    }
+
+    .breadcrumb-sep {
+      color: var(--text-muted);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    /* 页面内容 */
+    .page-content {
+      padding: var(--spacing-lg);
+      max-width: 1400px;
+    }
+
+    /* ============================================
+       组件
+       ============================================ */
+
+    /* 卡片 */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-bottom: 1px solid var(--border-default);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .card-body {
+      padding: var(--spacing-lg);
+    }
+
+    .card-footer {
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-top: 1px solid var(--border-default);
+      background: var(--bg-elevated);
+    }
+
+    /* 统计卡片 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      display: flex;
+      align-items: flex-start;
+      gap: var(--spacing-md);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .stat-icon.blue { background: var(--info-bg); color: var(--info); }
+    .stat-icon.green { background: var(--success-bg); color: var(--success); }
+    .stat-icon.orange { background: var(--warning-bg); color: var(--warning); }
+    .stat-icon.red { background: var(--danger-bg); color: var(--danger); }
+
+    .stat-content {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .stat-change {
+      font-size: 12px;
+      margin-top: var(--spacing-xs);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .stat-change.up { color: var(--success); }
+    .stat-change.down { color: var(--danger); }
+
+    /* 按钮 */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      border-color: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-default);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-overlay);
+      border-color: var(--text-muted);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+      border-color: var(--success);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: var(--danger-bg);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border-color: transparent;
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+
+    .btn-sm {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: 12px;
+    }
+
+    .btn-lg {
+      padding: var(--spacing-md) var(--spacing-lg);
+      font-size: 15px;
+    }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: var(--spacing-sm);
+    }
+
+    /* 徽章 */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      gap: 4px;
+    }
+
+    .badge-success {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .badge-warning {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .badge-danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .badge-info {
+      background: var(--info-bg);
+      color: var(--info);
+    }
+
+    .badge-muted {
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+    }
+
+    /* 带圆点的徽章 */
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .status-dot.offline { background: var(--text-muted); }
+    .status-dot.warning { background: var(--warning); }
+    .status-dot.error { background: var(--danger); }
+
+    /* 表格 */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th,
+    .table td {
+      padding: var(--spacing-md);
+      text-align: left;
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .table th {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: var(--bg-elevated);
+    }
+
+    .table tbody tr {
+      transition: background var(--transition-fast);
+    }
+
+    .table tbody tr:hover {
+      background: var(--bg-elevated);
+    }
+
+    .table-cell-main {
+      font-weight: 500;
+    }
+
+    .table-cell-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* 表单 */
+    .form-group {
+      margin-bottom: var(--spacing-md);
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: var(--spacing-xs);
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: var(--bg-base);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 14px;
+      transition: all var(--transition-fast);
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-bg);
+    }
+
+    .form-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-md);
+    }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: var(--spacing-xl) var(--spacing-lg);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: var(--spacing-md);
+      opacity: 0.5;
+    }
+
+    .empty-state-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .empty-state-text {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    /* 账号卡片 */
+    .account-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      transition: all var(--transition-fast);
+    }
+
+    .account-card:hover {
+      border-color: var(--primary-border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .account-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .account-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .account-name {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+
+    .account-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .account-status {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .account-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+    }
+
+    /* 任务卡片 */
+    .task-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: all var(--transition-fast);
+    }
+
+    .task-card:hover {
+      border-color: var(--primary-border);
+    }
+
+    .task-card-header {
+      padding: var(--spacing-md) var(--spacing-lg);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-muted);
+    }
+
+    .task-card-title {
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .task-card-body {
+      padding: var(--spacing-md) var(--spacing-lg);
+    }
+
+    .task-info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--spacing-md);
+    }
+
+    .task-info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .task-info-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .task-info-value {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .task-card-footer {
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* 时间线/日志 */
+    .log-container {
+      background: var(--bg-base);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-md);
+      font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .log-line {
+      display: flex;
+      gap: var(--spacing-sm);
+    }
+
+    .log-time {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .log-level {
+      flex-shrink: 0;
+      width: 50px;
+    }
+
+    .log-level.info { color: var(--info); }
+    .log-level.success { color: var(--success); }
+    .log-level.warning { color: var(--warning); }
+    .log-level.error { color: var(--danger); }
+
+    .log-message {
+      color: var(--text-secondary);
+    }
+
+    /* 活动列表 */
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md) 0;
+      border-bottom: 1px solid var(--border-muted);
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .activity-icon.success { background: var(--success-bg); color: var(--success); }
+    .activity-icon.info { background: var(--info-bg); color: var(--info); }
+    .activity-icon.warning { background: var(--warning-bg); color: var(--warning); }
+
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-title {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .activity-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .activity-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* 快捷操作网格 */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--spacing-md);
+    }
+
+    .quick-action {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .quick-action:hover {
+      border-color: var(--primary-border);
+      background: var(--bg-elevated);
+      transform: translateY(-2px);
+    }
+
+    .quick-action-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto var(--spacing-sm);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .quick-action-icon.blue { background: var(--info-bg); color: var(--info); }
+    .quick-action-icon.green { background: var(--success-bg); color: var(--success); }
+    .quick-action-icon.orange { background: var(--warning-bg); color: var(--warning); }
+    .quick-action-icon.purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+    .quick-action-text {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* 标签页 */
+    .tabs {
+      display: flex;
+      gap: var(--spacing-xs);
+      border-bottom: 1px solid var(--border-default);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .tab {
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all var(--transition-fast);
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      color: var(--primary-light);
+      border-bottom-color: var(--primary);
+    }
+
+    /* 搜索框 */
+    .search-box {
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: var(--spacing-sm) var(--spacing-md);
+      padding-left: 36px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .search-box-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* 辅助类 */
+    .text-muted { color: var(--text-muted); }
+    .text-secondary { color: var(--text-secondary); }
+    .text-success { color: var(--success); }
+    .text-danger { color: var(--danger); }
+    .text-warning { color: var(--warning); }
+
+    .flex { display: flex; }
+    .flex-1 { flex: 1; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-sm { gap: var(--spacing-sm); }
+    .gap-md { gap: var(--spacing-md); }
+    .gap-lg { gap: var(--spacing-lg); }
+
+    .mb-sm { margin-bottom: var(--spacing-sm); }
+    .mb-md { margin-bottom: var(--spacing-md); }
+    .mb-lg { margin-bottom: var(--spacing-lg); }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--spacing-md);
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--spacing-md);
+    }
+
+    /* 滚动条样式 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-base);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-default);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* ============================================
+       页面切换 JS
+       ============================================ */
+    .page { display: none; }
+    .page.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon">📡</div>
+          <div>
+            <div class="logo-text">TG Signer</div>
+            <div class="logo-version">v0.8.4</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-section">
+          <div class="nav-section-title">概览</div>
+          <a class="nav-item active" data-page="dashboard">
+            <span class="nav-item-icon">📊</span>
+            <span>仪表盘</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">管理</div>
+          <a class="nav-item" data-page="accounts">
+            <span class="nav-item-icon">👤</span>
+            <span>账号管理</span>
+            <span class="nav-item-badge">2</span>
+          </a>
+          <a class="nav-item" data-page="tasks">
+            <span class="nav-item-icon">📋</span>
+            <span>任务配置</span>
+          </a>
+          <a class="nav-item" data-page="runs">
+            <span class="nav-item-icon">▶️</span>
+            <span>运行记录</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">系统</div>
+          <a class="nav-item" data-page="backup">
+            <span class="nav-item-icon">☁️</span>
+            <span>备份恢复</span>
+          </a>
+          <a class="nav-item" data-page="settings">
+            <span class="nav-item-icon">⚙️</span>
+            <span>系统设置</span>
+          </a>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="user-avatar">A</div>
+          <div class="user-info">
+            <div class="user-name">admin</div>
+            <div class="user-role">管理员</div>
+          </div>
+          <button class="btn btn-ghost btn-icon" title="退出登录">🚪</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- ========== 仪表盘页面 ========== -->
+      <div class="page active" id="page-dashboard">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="page-title">仪表盘</h1>
+          </div>
+          <div class="topbar-right">
+            <div class="search-box">
+              <span class="search-box-icon">🔍</span>
+              <input type="text" placeholder="搜索任务或账号..." />
+            </div>
+          </div>
+        </div>
+
+        <div class="page-content">
+          <!-- 统计卡片 -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon blue">👤</div>
+              <div class="stat-content">
+                <div class="stat-value">2</div>
+                <div class="stat-label">活跃账号</div>
+                <div class="stat-change up">↑ 全部在线</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon green">📋</div>
+              <div class="stat-content">
+                <div class="stat-value">5</div>
+                <div class="stat-label">运行中任务</div>
+                <div class="stat-change up">↑ 3 个今日执行</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon orange">✅</div>
+              <div class="stat-content">
+                <div class="stat-value">128</div>
+                <div class="stat-label">今日签到次数</div>
+                <div class="stat-change up">↑ 12% 较昨日</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon red">❌</div>
+              <div class="stat-content">
+                <div class="stat-value">2</div>
+                <div class="stat-label">失败任务</div>
+                <div class="stat-change down">需要关注</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 快捷操作 -->
+          <div class="card mb-lg">
+            <div class="card-header">
+              <div class="card-title">⚡ 快捷操作</div>
+            </div>
+            <div class="card-body">
+              <div class="quick-actions">
+                <a class="quick-action" data-page="accounts">
+                  <div class="quick-action-icon blue">➕</div>
+                  <div class="quick-action-text">添加账号</div>
+                </a>
+                <a class="quick-action" data-page="tasks">
+                  <div class="quick-action-icon green">📝</div>
+                  <div class="quick-action-text">创建任务</div>
+                </a>
+                <a class="quick-action">
+                  <div class="quick-action-icon orange">🔄</div>
+                  <div class="quick-action-text">立即执行</div>
+                </a>
+                <a class="quick-action" data-page="backup">
+                  <div class="quick-action-icon purple">☁️</div>
+                  <div class="quick-action-text">备份数据</div>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 两栏布局 -->
+          <div class="grid-2">
+            <!-- 最近活动 -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📜 最近活动</div>
+                <button class="btn btn-ghost btn-sm">查看全部</button>
+              </div>
+              <div class="card-body">
+                <div class="activity-list">
+                  <div class="activity-item">
+                    <div class="activity-icon success">✅</div>
+                    <div class="activity-content">
+                      <div class="activity-title">每日签到 - 主号</div>
+                      <div class="activity-desc">签到成功，获得 10 积分</div>
+                    </div>
+                    <div class="activity-time">2 分钟前</div>
+                  </div>
+                  <div class="activity-item">
+                    <div class="activity-icon success">✅</div>
+                    <div class="activity-content">
+                      <div class="activity-title">自动回复 - 小号</div>
+                      <div class="activity-desc">已自动回复 3 条消息</div>
+                    </div>
+                    <div class="activity-time">15 分钟前</div>
+                  </div>
+                  <div class="activity-item">
+                    <div class="activity-icon info">🔄</div>
+                    <div class="activity-content">
+                      <div class="activity-title">数据备份</div>
+                      <div class="activity-desc">WebDAV 备份完成</div>
+                    </div>
+                    <div class="activity-time">1 小时前</div>
+                  </div>
+                  <div class="activity-item">
+                    <div class="activity-icon warning">⚠️</div>
+                    <div class="activity-content">
+                      <div class="activity-title">图片识别签到</div>
+                      <div class="activity-desc">AI 识别超时，已重试</div>
+                    </div>
+                    <div class="activity-time">2 小时前</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 下次执行 -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">⏰ 即将执行</div>
+              </div>
+              <div class="card-body">
+                <div class="activity-list">
+                  <div class="activity-item">
+                    <div class="activity-icon info">📋</div>
+                    <div class="activity-content">
+                      <div class="activity-title">每日签到 - 主号</div>
+                      <div class="activity-desc">目标：积分群、福利频道</div>
+                    </div>
+                    <div class="activity-time">08:00</div>
+                  </div>
+                  <div class="activity-item">
+                    <div class="activity-icon info">📋</div>
+                    <div class="activity-content">
+                      <div class="activity-title">图片验证签到</div>
+                      <div class="activity-desc">目标：验证群</div>
+                    </div>
+                    <div class="activity-time">09:30</div>
+                  </div>
+                  <div class="activity-item">
+                    <div class="activity-icon info">📋</div>
+                    <div class="activity-content">
+                      <div class="activity-title">监控回复 - 小号</div>
+                      <div class="activity-desc">持续运行中</div>
+                    </div>
+                    <div class="activity-time">持续</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 账号管理页面 ========== -->
+      <div class="page" id="page-accounts">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="page-title">账号管理</h1>
+          </div>
+          <div class="topbar-right">
+            <button class="btn btn-primary">➕ 添加账号</button>
+          </div>
+        </div>
+
+        <div class="page-content">
+          <!-- 账号卡片列表 -->
+          <div class="grid-2 mb-lg">
+            <div class="account-card">
+              <div class="account-avatar">主</div>
+              <div class="account-info">
+                <div class="account-name">主号</div>
+                <div class="account-meta">+86 138****8888 · 上次登录：2024-01-14 10:30</div>
+                <div class="account-status">
+                  <span class="status-dot online"></span>
+                  <span class="badge badge-success">已登录</span>
+                </div>
+              </div>
+              <div class="account-actions">
+                <button class="btn btn-secondary btn-sm">最近对话</button>
+                <button class="btn btn-danger btn-sm">登出</button>
+              </div>
+            </div>
+
+            <div class="account-card">
+              <div class="account-avatar">小</div>
+              <div class="account-info">
+                <div class="account-name">小号</div>
+                <div class="account-meta">+86 139****9999 · 上次登录：2024-01-14 09:15</div>
+                <div class="account-status">
+                  <span class="status-dot online"></span>
+                  <span class="badge badge-success">已登录</span>
+                </div>
+              </div>
+              <div class="account-actions">
+                <button class="btn btn-secondary btn-sm">最近对话</button>
+                <button class="btn btn-danger btn-sm">登出</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 添加新账号表单 -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">➕ 添加新账号</div>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">账号名称</label>
+                  <input type="text" class="form-input" placeholder="例如：主号、工作号" />
+                  <div class="form-hint">用于识别账号，可随意命名</div>
+                </div>
+              </div>
+              <button class="btn btn-primary">创建账号</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 任务配置页面 ========== -->
+      <div class="page" id="page-tasks">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="page-title">任务配置</h1>
+          </div>
+          <div class="topbar-right">
+            <button class="btn btn-primary">➕ 创建任务</button>
+          </div>
+        </div>
+
+        <div class="page-content">
+          <!-- 任务卡片 -->
+          <div class="mb-lg">
+            <div class="task-card mb-md">
+              <div class="task-card-header">
+                <div class="task-card-title">
+                  <span class="status-dot online"></span>
+                  每日签到
+                </div>
+                <div class="flex gap-sm">
+                  <span class="badge badge-success">运行中</span>
+                  <span class="badge badge-info">主号</span>
+                </div>
+              </div>
+              <div class="task-card-body">
+                <div class="task-info-grid">
+                  <div class="task-info-item">
+                    <span class="task-info-label">执行时间</span>
+                    <span class="task-info-value">每天 08:00</span>
+                  </div>
+                  <div class="task-info-item">
+                    <span class="task-info-label">随机延迟</span>
+                    <span class="task-info-value">0-60 秒</span>
+                  </div>
+                  <div class="task-info-item">
+                    <span class="task-info-label">上次执行</span>
+                    <span class="task-info-value">2024-01-14 08:00:32</span>
+                  </div>
+                </div>
+              </div>
+              <div class="task-card-footer">
+                <div class="btn-group">
+                  <button class="btn btn-secondary btn-sm">向导配置</button>
+                  <button class="btn btn-secondary btn-sm">JSON 编辑</button>
+                  <button class="btn btn-secondary btn-sm">时间设置</button>
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-primary btn-sm">运行一次</button>
+                  <button class="btn btn-danger btn-sm">停用</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="task-card mb-md">
+              <div class="task-card-header">
+                <div class="task-card-title">
+                  <span class="status-dot online"></span>
+                  图片验证签到
+                </div>
+                <div class="flex gap-sm">
+                  <span class="badge badge-success">运行中</span>
+                  <span class="badge badge-info">主号</span>
+                </div>
+              </div>
+              <div class="task-card-body">
+                <div class="task-info-grid">
+                  <div class="task-info-item">
+                    <span class="task-info-label">执行时间</span>
+                    <span class="task-info-value">每天 09:30</span>
+                  </div>
+                  <div class="task-info-item">
+                    <span class="task-info-label">随机延迟</span>
+                    <span class="task-info-value">0-30 秒</span>
+                  </div>
+                  <div class="task-info-item">
+                    <span class="task-info-label">上次执行</span>
+                    <span class="task-info-value">2024-01-14 09:30:15</span>
+                  </div>
+                </div>
+              </div>
+              <div class="task-card-footer">
+                <div class="btn-group">
+                  <button class="btn btn-secondary btn-sm">向导配置</button>
+                  <button class="btn btn-secondary btn-sm">JSON 编辑</button>
+                  <button class="btn btn-secondary btn-sm">时间设置</button>
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-primary btn-sm">运行一次</button>
+                  <button class="btn btn-danger btn-sm">停用</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="task-card">
+              <div class="task-card-header">
+                <div class="task-card-title">
+                  <span class="status-dot offline"></span>
+                  监控回复
+                </div>
+                <div class="flex gap-sm">
+                  <span class="badge badge-muted">未启用</span>
+                  <span class="badge badge-info">小号</span>
+                </div>
+              </div>
+              <div class="task-card-body">
+                <div class="task-info-grid">
+                  <div class="task-info-item">
+                    <span class="task-info-label">执行模式</span>
+                    <span class="task-info-value">持续监控</span>
+                  </div>
+                  <div class="task-info-item">
+                    <span class="task-info-label">目标对话</span>
+                    <span class="task-info-value">3 个群组</span>
+                  </div>
+                  <div class="task-info-item">
+                    <span class="task-info-label">上次执行</span>
+                    <span class="task-info-value">-</span>
+                  </div>
+                </div>
+              </div>
+              <div class="task-card-footer">
+                <div class="btn-group">
+                  <button class="btn btn-secondary btn-sm">向导配置</button>
+                  <button class="btn btn-secondary btn-sm">JSON 编辑</button>
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-success btn-sm">启用</button>
+                  <button class="btn btn-danger btn-sm">删除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 创建新任务 -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">➕ 创建新任务</div>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">任务名称</label>
+                  <input type="text" class="form-input" placeholder="例如：每日签到" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">选择账号</label>
+                  <select class="form-select">
+                    <option value="main">主号</option>
+                    <option value="sub">小号</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn btn-primary">创建任务</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 运行记录页面 ========== -->
+      <div class="page" id="page-runs">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="page-title">运行记录</h1>
+          </div>
+          <div class="topbar-right">
+            <button class="btn btn-secondary">🔄 刷新</button>
+          </div>
+        </div>
+
+        <div class="page-content">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📜 运行历史</div>
+              <div class="flex gap-sm">
+                <select class="form-select" style="width: auto;">
+                  <option>全部任务</option>
+                  <option>每日签到</option>
+                  <option>图片验证签到</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>运行 ID</th>
+                    <th>任务</th>
+                    <th>账号</th>
+                    <th>模式</th>
+                    <th>状态</th>
+                    <th>开始时间</th>
+                    <th>结束时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code style="font-size: 12px; color: var(--text-muted);">run_20240114_080032</code></td>
+                    <td class="table-cell-main">每日签到</td>
+                    <td>主号</td>
+                    <td><span class="badge badge-info">scheduled</span></td>
+                    <td><span class="badge badge-success">✅ 成功</span></td>
+                    <td>2024-01-14 08:00:32</td>
+                    <td>2024-01-14 08:01:15</td>
+                    <td><button class="btn btn-secondary btn-sm">查看日志</button></td>
+                  </tr>
+                  <tr>
+                    <td><code style="font-size: 12px; color: var(--text-muted);">run_20240114_093015</code></td>
+                    <td class="table-cell-main">图片验证签到</td>
+                    <td>主号</td>
+                    <td><span class="badge badge-info">scheduled</span></td>
+                    <td><span class="badge badge-success">✅ 成功</span></td>
+                    <td>2024-01-14 09:30:15</td>
+                    <td>2024-01-14 09:30:48</td>
+                    <td><button class="btn btn-secondary btn-sm">查看日志</button></td>
+                  </tr>
+                  <tr>
+                    <td><code style="font-size: 12px; color: var(--text-muted);">run_20240113_080045</code></td>
+                    <td class="table-cell-main">每日签到</td>
+                    <td>主号</td>
+                    <td><span class="badge badge-info">scheduled</span></td>
+                    <td><span class="badge badge-danger">❌ 失败</span></td>
+                    <td>2024-01-13 08:00:45</td>
+                    <td>2024-01-13 08:01:02</td>
+                    <td><button class="btn btn-secondary btn-sm">查看日志</button></td>
+                  </tr>
+                  <tr>
+                    <td><code style="font-size: 12px; color: var(--text-muted);">run_20240113_120000</code></td>
+                    <td class="table-cell-main">监控回复</td>
+                    <td>小号</td>
+                    <td><span class="badge badge-warning">manual</span></td>
+                    <td><span class="badge badge-muted">⏹️ 已停止</span></td>
+                    <td>2024-01-13 12:00:00</td>
+                    <td>2024-01-13 18:30:00</td>
+                    <td><button class="btn btn-secondary btn-sm">查看日志</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 日志预览 -->
+          <div class="card" style="margin-top: var(--spacing-lg);">
+            <div class="card-header">
+              <div class="card-title">📋 实时日志 - run_20240114_080032</div>
+              <div class="flex gap-sm">
+                <span class="badge badge-success">运行中</span>
+                <button class="btn btn-ghost btn-sm">⬇️ 滚动到底部</button>
+              </div>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <div class="log-container">
+                <div class="log-line"><span class="log-time">[08:00:32]</span> <span class="log-level info">INFO</span> <span class="log-message">任务开始执行：每日签到</span></div>
+                <div class="log-line"><span class="log-time">[08:00:33]</span> <span class="log-level info">INFO</span> <span class="log-message">连接 Telegram 服务器...</span></div>
+                <div class="log-line"><span class="log-time">[08:00:35]</span> <span class="log-level success">OK</span> <span class="log-message">登录成功：主号 (+86 138****8888)</span></div>
+                <div class="log-line"><span class="log-time">[08:00:36]</span> <span class="log-level info">INFO</span> <span class="log-message">开始签到：积分群 (chat_id: -100123456789)</span></div>
+                <div class="log-line"><span class="log-time">[08:00:37]</span> <span class="log-level info">INFO</span> <span class="log-message">发送消息：/sign</span></div>
+                <div class="log-line"><span class="log-time">[08:00:38]</span> <span class="log-level success">OK</span> <span class="log-message">签到成功！获得 10 积分</span></div>
+                <div class="log-line"><span class="log-time">[08:00:40]</span> <span class="log-level info">INFO</span> <span class="log-message">开始签到：福利频道 (chat_id: -100987654321)</span></div>
+                <div class="log-line"><span class="log-time">[08:00:41]</span> <span class="log-level info">INFO</span> <span class="log-message">点击键盘按钮：立即签到</span></div>
+                <div class="log-line"><span class="log-time">[08:00:43]</span> <span class="log-level success">OK</span> <span class="log-message">签到成功！</span></div>
+                <div class="log-line"><span class="log-time">[08:01:15]</span> <span class="log-level success">OK</span> <span class="log-message">任务完成，共签到 2 个对话</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 备份恢复页面 ========== -->
+      <div class="page" id="page-backup">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="page-title">备份恢复</h1>
+          </div>
+          <div class="topbar-right">
+            <button class="btn btn-primary">☁️ 立即备份</button>
+          </div>
+        </div>
+
+        <div class="page-content">
+          <!-- 备份状态 -->
+          <div class="stats-grid mb-lg">
+            <div class="stat-card">
+              <div class="stat-icon green">☁️</div>
+              <div class="stat-content">
+                <div class="stat-value">已连接</div>
+                <div class="stat-label">WebDAV 状态</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue">📅</div>
+              <div class="stat-content">
+                <div class="stat-value">2024-01-14</div>
+                <div class="stat-label">上次备份</div>
+                <div class="stat-change">10:30:00</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon orange">📦</div>
+              <div class="stat-content">
+                <div class="stat-value">2.4 MB</div>
+                <div class="stat-label">备份大小</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 备份列表 -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📦 备份历史</div>
+            </div>
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>文件名</th>
+                    <th>大小</th>
+                    <th>创建时间</th>
+                    <th>加密</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="table-cell-main">backup_20240114_103000.tar.gz</td>
+                    <td>2.4 MB</td>
+                    <td>2024-01-14 10:30:00</td>
+                    <td><span class="badge badge-success">🔒 已加密</span></td>
+                    <td>
+                      <button class="btn btn-secondary btn-sm">下载</button>
+                      <button class="btn btn-primary btn-sm">恢复</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="table-cell-main">backup_20240113_103000.tar.gz</td>
+                    <td>2.3 MB</td>
+                    <td>2024-01-13 10:30:00</td>
+                    <td><span class="badge badge-success">🔒 已加密</span></td>
+                    <td>
+                      <button class="btn btn-secondary btn-sm">下载</button>
+                      <button class="btn btn-primary btn-sm">恢复</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 系统设置页面 ========== -->
+      <div class="page" id="page-settings">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="page-title">系统设置</h1>
+          </div>
+        </div>
+
+        <div class="page-content">
+          <div class="tabs">
+            <div class="tab active">Telegram API</div>
+            <div class="tab">管理员账号</div>
+            <div class="tab">WebDAV 备份</div>
+            <div class="tab">高级设置</div>
+          </div>
+
+          <!-- Telegram API 设置 -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📱 Telegram API 配置</div>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">API ID</label>
+                  <input type="text" class="form-input" placeholder="从 my.telegram.org 获取" value="12345678" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">API Hash</label>
+                  <input type="text" class="form-input" placeholder="从 my.telegram.org 获取" value="abcdef1234567890abcdef" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">代理设置（可选）</label>
+                <input type="text" class="form-input" placeholder="socks5://127.0.0.1:7890" />
+                <div class="form-hint">支持 socks5、http 代理，留空则不使用代理</div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <button class="btn btn-primary">💾 保存配置</button>
+            </div>
+          </div>
+
+          <!-- 管理员设置 -->
+          <div class="card" style="margin-top: var(--spacing-lg);">
+            <div class="card-header">
+              <div class="card-title">👤 管理员账号</div>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">用户名</label>
+                  <input type="text" class="form-input" value="admin" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">新密码</label>
+                  <input type="password" class="form-input" placeholder="留空表示不修改" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">会话密钥</label>
+                  <input type="text" class="form-input" placeholder="留空表示不修改" />
+                  <div class="form-hint">用于加密登录 session，修改后需重新登录</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Cookie Secure</label>
+                  <select class="form-select">
+                    <option value="1">启用（HTTPS）</option>
+                    <option value="0">禁用（本地调试）</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <button class="btn btn-primary">💾 保存配置</button>
+            </div>
+          </div>
+
+          <!-- WebDAV 设置 -->
+          <div class="card" style="margin-top: var(--spacing-lg);">
+            <div class="card-header">
+              <div class="card-title">☁️ WebDAV 备份配置</div>
+              <span class="badge badge-warning">强烈建议配置</span>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">WebDAV URL</label>
+                  <input type="text" class="form-input" placeholder="https://dav.example.com" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">远端路径</label>
+                  <input type="text" class="form-input" placeholder="/tg-signer/" />
+                  <div class="form-hint">备份文件存放的目录路径</div>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">用户名</label>
+                  <input type="text" class="form-input" placeholder="WebDAV 用户名" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">密码</label>
+                  <input type="password" class="form-input" placeholder="WebDAV 密码" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">备份间隔（秒）</label>
+                  <input type="number" class="form-input" value="300" />
+                  <div class="form-hint">默认 300 秒（5 分钟）</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">加密密钥</label>
+                  <input type="text" class="form-input" placeholder="用于加密备份文件" />
+                  <div class="form-hint">强烈建议设置，保护敏感数据</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <button class="btn btn-secondary">🔍 测试连接</button>
+              <button class="btn btn-primary" style="margin-left: var(--spacing-sm);">💾 保存配置</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 页面切换脚本 -->
+  <script>
+    document.querySelectorAll('[data-page]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        const pageId = el.dataset.page;
+
+        // 更新导航状态
+        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+        document.querySelector(`.nav-item[data-page="${pageId}"]`)?.classList.add('active');
+
+        // 切换页面
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+        document.getElementById(`page-${pageId}`)?.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

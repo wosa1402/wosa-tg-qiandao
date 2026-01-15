@@ -3,29 +3,33 @@
 {% set title = "编辑任务 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel">
-    <div class="row">
-      <h2 style="margin: 0;">编辑任务：<code>{{ task.task_name }}</code></h2>
-      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <a class="btn" href="/tasks">返回</a>
-        <a class="btn" href="/tasks/{{ task.task_name }}/wizard">向导生成</a>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🧩 编辑任务：<code>{{ task.task_name }}</code></div>
+      <div class="btn-group">
+        <a class="btn btn-secondary btn-sm" href="/tasks">返回</a>
+        <a class="btn btn-secondary btn-sm" href="/tasks/{{ task.task_name }}/wizard">向导配置</a>
       </div>
     </div>
-    <p class="muted">保存时会做配置校验与规范化（自动补全/转换旧版本）。</p>
-    {% if ok %}
-      <p class="ok">保存成功</p>
-    {% endif %}
-    {% if error %}
-      <p class="error">{{ error }}</p>
-    {% endif %}
+    <div class="card-body">
+      <p class="text-secondary mb-md">保存时会做配置校验与规范化（自动补全/转换旧版本）。</p>
+      {% if ok %}
+        <div class="alert alert-success">保存成功</div>
+      {% endif %}
+      {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
 
-    <form method="post" action="/tasks/{{ task.task_name }}/edit">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <div class="field">
-        <label>config.json</label>
-        <textarea name="config_text" rows="26" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.18); color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">{{ config_text }}</textarea>
-      </div>
-      <button class="btn primary" type="submit">保存</button>
-    </form>
+      <form method="post" action="/tasks/{{ task.task_name }}/edit">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <div class="form-group">
+          <label class="form-label">config.json</label>
+          <textarea class="form-textarea" name="config_text" rows="22" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">{{ config_text }}</textarea>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" type="submit">保存</button>
+        </div>
+      </form>
+    </div>
   </div>
 {% endblock %}

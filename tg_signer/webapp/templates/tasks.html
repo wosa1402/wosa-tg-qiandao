@@ -3,130 +3,160 @@
 {% set title = "任务 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel">
-    <h2 style="margin-top: 0">任务</h2>
-    <p class="muted">
-      “启用”表示该任务会按 <code>sign_at</code> 的计划常驻运行；“运行一次”会立刻执行一次（不影响启用状态）。
-    </p>
-    {% if ok %}
-      <p class="ok">{{ ok }}</p>
-    {% endif %}
-    {% if error %}
-      <p class="error">{{ error }}</p>
-    {% endif %}
+  <p class="text-secondary mb-md">
+    “启用”表示该任务会按 <code>sign_at</code> 的计划运行；“运行一次”会立刻执行一次（不影响启用状态）。
+  </p>
 
-    <form method="post" action="/tasks" style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <div class="field" style="min-width: 260px;">
-        <label>任务名</label>
-        <input type="text" name="task_name" placeholder="例如 每日签到" value="{{ (form.task_name if form else '') }}" required />
-      </div>
-      <div class="field" style="min-width: 220px;">
-        <label>账号</label>
-        <select name="account_name" style="padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.18); color: var(--text);" required>
+  {% if ok %}
+    <div class="alert alert-success">{{ ok }}</div>
+  {% endif %}
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <div class="card mb-lg">
+    <div class="card-header">
+      <div class="card-title">➕ 创建新任务</div>
+      <a class="btn btn-secondary btn-sm" href="/accounts">账号管理</a>
+    </div>
+    <div class="card-body">
+      <form method="post" action="/tasks">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">任务名称</label>
+            <input class="form-input" type="text" name="task_name" placeholder="例如：每日签到" value="{{ (form.task_name if form else '') }}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">选择账号</label>
+            <select class="form-select" name="account_name" required>
+              {% if accounts|length == 0 %}
+                <option value="">请先创建账号</option>
+              {% else %}
+                {% for a in accounts %}
+                  <option value="{{ a }}" {% if form and form.account_name == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+              {% endif %}
+            </select>
+          </div>
+        </div>
+        <div class="btn-group">
           {% if accounts|length == 0 %}
-            <option value="">请先创建账号</option>
+            <button class="btn btn-primary" type="submit" disabled>创建任务</button>
+            <span class="text-muted">先去 /accounts 创建并登录账号</span>
           {% else %}
-            {% for a in accounts %}
-              <option value="{{ a }}" {% if form and form.account_name == a %}selected{% endif %}>{{ a }}</option>
-            {% endfor %}
+            <button class="btn btn-primary" type="submit">创建任务</button>
           {% endif %}
-        </select>
-      </div>
-      {% if accounts|length == 0 %}
-        <button class="btn primary" type="submit" disabled>创建</button>
-        <span class="muted">先去 /accounts 创建并登录账号</span>
-      {% else %}
-        <button class="btn primary" type="submit">创建</button>
-      {% endif %}
-    </form>
-
-    <div style="height: 12px;"></div>
-
-    {% if tasks|length == 0 %}
-      <p class="muted">暂无任务。先创建任务，再进入配置页面编辑 JSON。</p>
-    {% else %}
-      <div class="panel" style="padding: 0;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="text-align: left;">
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">任务</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">账号</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">状态</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">计划</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">更新</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for t in tasks %}
-              <tr>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ t.task_name }}</code></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ t.account_name }}</code></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                  {% if t.enabled %}
-                    {% if t.running %}
-                      <span class="badge ok">已启用 · 运行中</span>
-                    {% elif not t.logged_in %}
-                      <span class="badge">已启用 · 待登录</span>
-                    {% else %}
-                      <span class="badge">已启用 · 未运行</span>
-                    {% endif %}
-                  {% else %}
-                    <span class="badge off">未启用</span>
-                  {% endif %}
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                  {% if t.config_ok %}
-                    <div><span class="muted">{{ t.schedule_label }}</span></div>
-                    <div class="muted" style="font-size: 12px;">
-                      随机 {{ t.random_seconds }} 秒 · 间隔 {{ t.sign_interval }} 秒
-                    </div>
-                  {% else %}
-                    <div class="error">配置有误（建议用 JSON 编辑修复）</div>
-                  {% endif %}
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ t.updated_at }}</span></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                  <a class="btn" href="/tasks/{{ t.task_name }}/wizard">向导配置</a>
-                  <a class="btn" href="/tasks/{{ t.task_name }}/edit">JSON 编辑</a>
-                  <a class="btn" href="/tasks/{{ t.task_name }}/schedule">时间设置</a>
-
-                  {% if t.enabled %}
-                    <form method="post" action="/tasks/{{ t.task_name }}/disable" style="display: inline;">
-                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                      <button class="btn danger" type="submit">停用</button>
-                    </form>
-                    {% if not t.running and t.logged_in %}
-                      <form method="post" action="/tasks/{{ t.task_name }}/enable" style="display: inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                        <button class="btn primary" type="submit">启动</button>
-                      </form>
-                    {% endif %}
-                    {% if t.running and t.running_run_id %}
-                      <a class="btn" href="/runs/{{ t.running_run_id }}">查看运行</a>
-                    {% endif %}
-                  {% else %}
-                    <form method="post" action="/tasks/{{ t.task_name }}/enable" style="display: inline;">
-                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                      <button class="btn primary" type="submit">启用</button>
-                    </form>
-                  {% endif %}
-
-                  <form method="post" action="/tasks/{{ t.task_name }}/run-once" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <button class="btn" type="submit" {% if not t.logged_in or t.running %}disabled{% endif %}>运行一次</button>
-                  </form>
-                  <form method="post" action="/tasks/{{ t.task_name }}/delete" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <button class="btn danger" type="submit">删除</button>
-                  </form>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% endif %}
+        </div>
+      </form>
+    </div>
   </div>
+
+  {% if tasks|length == 0 %}
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <div class="empty-state-title">暂无任务</div>
+      <div class="empty-state-text">先创建任务，再进入配置页面编辑 JSON 或使用向导配置。</div>
+    </div>
+  {% else %}
+    <div class="mb-lg">
+      {% for t in tasks %}
+        <div class="task-card mb-md">
+          <div class="task-card-header">
+            <div class="task-card-title">
+              {% if not t.config_ok %}
+                <span class="status-dot error"></span>
+              {% elif t.running %}
+                <span class="status-dot online"></span>
+              {% elif t.enabled and not t.logged_in %}
+                <span class="status-dot warning"></span>
+              {% elif t.enabled %}
+                <span class="status-dot online"></span>
+              {% else %}
+                <span class="status-dot offline"></span>
+              {% endif %}
+              {{ t.task_name }}
+            </div>
+            <div class="flex gap-sm items-center">
+              <span class="badge badge-info">{{ t.account_name }}</span>
+              {% if not t.config_ok %}
+                <span class="badge badge-danger">配置有误</span>
+              {% elif t.enabled %}
+                {% if t.running %}
+                  <span class="badge badge-info">运行中</span>
+                {% elif not t.logged_in %}
+                  <span class="badge badge-warning">待登录</span>
+                {% else %}
+                  <span class="badge badge-success">已启用</span>
+                {% endif %}
+              {% else %}
+                <span class="badge badge-muted">未启用</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="task-card-body">
+            <div class="task-info-grid">
+              <div class="task-info-item">
+                <span class="task-info-label">执行时间</span>
+                <span class="task-info-value">{{ t.schedule_label if t.config_ok else "配置有误" }}</span>
+              </div>
+              <div class="task-info-item">
+                <span class="task-info-label">随机延迟</span>
+                <span class="task-info-value">{{ t.random_seconds if t.config_ok else "-" }} 秒</span>
+              </div>
+              <div class="task-info-item">
+                <span class="task-info-label">连续间隔</span>
+                <span class="task-info-value">{{ t.sign_interval if t.config_ok else "-" }} 秒</span>
+              </div>
+              <div class="task-info-item">
+                <span class="task-info-label">更新时间</span>
+                <span class="task-info-value">{{ t.updated_at }}</span>
+              </div>
+            </div>
+            {% if t.enabled and not t.logged_in %}
+              <div class="text-muted" style="margin-top: var(--spacing-md); font-size: 12px;">
+                该账号未登录 Telegram，任务暂无法执行；请先去 /accounts 完成登录。
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="task-card-footer">
+            <div class="btn-group">
+              <a class="btn btn-secondary btn-sm" href="/tasks/{{ t.task_name }}/wizard">向导配置</a>
+              <a class="btn btn-secondary btn-sm" href="/tasks/{{ t.task_name }}/edit">JSON 编辑</a>
+              <a class="btn btn-secondary btn-sm" href="/tasks/{{ t.task_name }}/schedule">时间设置</a>
+              {% if t.running and t.running_run_id %}
+                <a class="btn btn-secondary btn-sm" href="/runs/{{ t.running_run_id }}">查看运行</a>
+              {% endif %}
+            </div>
+
+            <div class="btn-group">
+              <form method="post" action="/tasks/{{ t.task_name }}/run-once" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <button class="btn btn-primary btn-sm" type="submit" {% if not t.logged_in %}disabled{% endif %}>运行一次</button>
+              </form>
+
+              {% if t.enabled %}
+                <form method="post" action="/tasks/{{ t.task_name }}/disable" style="display: inline;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <button class="btn btn-danger btn-sm" type="submit">停用</button>
+                </form>
+              {% else %}
+                <form method="post" action="/tasks/{{ t.task_name }}/enable" style="display: inline;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <button class="btn btn-success btn-sm" type="submit">启用</button>
+                </form>
+              {% endif %}
+
+              <form method="post" action="/tasks/{{ t.task_name }}/delete" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <button class="btn btn-danger btn-sm" type="submit">删除</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
 {% endblock %}

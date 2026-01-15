@@ -3,48 +3,67 @@
 {% set title = "运行 - TG Signer Web" %}
 
 {% block content %}
-  <div class="panel">
-    <h2 style="margin-top: 0">运行</h2>
-    <p class="muted">这里展示所有运行实例（run_id）。</p>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📜 运行记录</div>
+      <a class="btn btn-secondary btn-sm" href="/tasks">去任务配置</a>
+    </div>
+    <div class="card-body">
+      <p class="text-secondary mb-md">这里展示所有运行实例（run_id）。</p>
 
-    {% if items|length == 0 %}
-      <p class="muted">暂无运行记录。去 /tasks 发起一次运行。</p>
-    {% else %}
-      <div class="panel" style="padding: 0;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="text-align: left;">
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">run_id</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">任务</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">账号</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">模式</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">状态</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">开始</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">结束</th>
-              <th style="padding: 12px; border-bottom: 1px solid var(--border);">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in items %}
+      {% if items|length == 0 %}
+        <div class="empty-state">
+          <div class="empty-state-icon">🕒</div>
+          <div class="empty-state-title">暂无运行记录</div>
+          <div class="empty-state-text">去 /tasks 发起一次“运行一次”。</div>
+          <a class="btn btn-primary" href="/tasks">前往任务配置</a>
+        </div>
+      {% else %}
+        <div class="table-container">
+          <table class="table">
+            <thead>
               <tr>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                  <code style="font-size: 12px;">{{ r.run_id }}</code>
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ r.task_name }}</code></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><code>{{ r.account_name }}</code></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ r.mode }}</span></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ r.status }}</span></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ r.started_at or "-" }}</span></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="muted">{{ r.finished_at or "-" }}</span></td>
-                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                  <a class="btn" href="/runs/{{ r.run_id }}">查看</a>
-                </td>
+                <th>run_id</th>
+                <th>任务</th>
+                <th>账号</th>
+                <th>模式</th>
+                <th>状态</th>
+                <th>开始</th>
+                <th>结束</th>
+                <th>操作</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% endif %}
+            </thead>
+            <tbody>
+              {% for r in items %}
+                <tr>
+                  <td><code>{{ r.run_id }}</code></td>
+                  <td>{{ r.task_name }}</td>
+                  <td>{{ r.account_name }}</td>
+                  <td class="text-secondary">{{ r.mode }}</td>
+                  <td>
+                    {% if r.status == "running" %}
+                      <span class="badge badge-info">运行中</span>
+                    {% elif r.status == "success" %}
+                      <span class="badge badge-success">成功</span>
+                    {% elif r.status == "failed" %}
+                      <span class="badge badge-danger">失败</span>
+                    {% elif r.status == "stopped" %}
+                      <span class="badge badge-muted">已停止</span>
+                    {% elif r.status == "stopping" %}
+                      <span class="badge badge-warning">停止中</span>
+                    {% else %}
+                      <span class="badge badge-muted">{{ r.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-secondary" style="font-size: 12px;">{{ r.started_at or "-" }}</td>
+                  <td class="text-secondary" style="font-size: 12px;">{{ r.finished_at or "-" }}</td>
+                  <td><a class="btn btn-secondary btn-sm" href="/runs/{{ r.run_id }}">查看</a></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
   </div>
 {% endblock %}
-

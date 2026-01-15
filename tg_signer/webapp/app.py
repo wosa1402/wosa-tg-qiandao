@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
+from tg_signer import __version__ as TG_SIGNER_VERSION
 from tg_signer.webapp.backup import WebDavBackupManager
 from tg_signer.webapp.manager import WorkerManager
 from tg_signer.webapp.routes.accounts import router as accounts_router
@@ -107,6 +108,7 @@ def create_app(settings: Optional[WebSettings] = None) -> FastAPI:
 
     base_dir = Path(__file__).resolve().parent
     templates = Jinja2Templates(directory=str(base_dir / "templates"))
+    templates.env.globals["APP_VERSION"] = TG_SIGNER_VERSION
 
     app = FastAPI(title="TG Signer Web")
     app.state.settings = settings
@@ -286,12 +288,49 @@ def create_app(settings: Optional[WebSettings] = None) -> FastAPI:
             return redirect_to_login(request)
         if _needs_settings_guidance():
             return RedirectResponse(url="/settings?guide=1", status_code=303)
+
+        settings: WebSettings = request.app.state.settings
+        accounts_store: AccountsStore = request.app.state.accounts_store
+        tasks_store: TasksStore = request.app.state.tasks_store
+        runs_store: RunsStore = request.app.state.runs_store
+
+        accounts = accounts_store.list()
+        sessions_dir = settings.sessions_dir
+
+        def _is_logged_in(account_name: str) -> bool:
+            candidates = [
+                sessions_dir / f"{account_name}.session_string",
+                sessions_dir / f"{account_name}.session",
+            ]
+            return any(p.exists() for p in candidates)
+
+        accounts_total = len(accounts)
+        accounts_logged_in = sum(1 for a in accounts if _is_logged_in(a.account_name))
+
+        tasks = tasks_store.list()
+        tasks_total = len(tasks)
+        tasks_enabled = sum(1 for t in tasks if t.enabled)
+
+        runs = runs_store.list()
+        runs_running = sum(1 for r in runs if r.status in {"running", "stopping"})
+        runs_failed_recent = sum(1 for r in runs[:50] if r.status == "failed")
+        recent_runs = runs[:10]
+
         return templates.TemplateResponse(
             request,
             "index.html",
             {
                 "request": request,
                 "csrf_token": issue_csrf_token(request),
+                "stats": {
+                    "accounts_total": accounts_total,
+                    "accounts_logged_in": accounts_logged_in,
+                    "tasks_total": tasks_total,
+                    "tasks_enabled": tasks_enabled,
+                    "runs_running": runs_running,
+                    "runs_failed_recent": runs_failed_recent,
+                },
+                "recent_runs": recent_runs,
             },
         )
 
