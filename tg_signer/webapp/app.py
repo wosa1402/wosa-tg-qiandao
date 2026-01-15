@@ -533,10 +533,43 @@ def create_app(settings: Optional[WebSettings] = None) -> FastAPI:
             backup_manager = WebDavBackupManager(settings, new_config.webdav)
             request.app.state.backup_manager = backup_manager
             request.app.state.worker_manager.set_backup_scheduler(backup_manager)
-            request.app.state.backup_task = asyncio.create_task(
-                backup_manager.run_scheduler()
-            )
-            await backup_manager.schedule_push("settings")
+
+            restore_failed = False
+            if current.webdav is None and not request.app.state.worker_manager.has_running():
+                # 避免在“新部署/空数据”场景下，刚配置好 WebDAV 就把空备份覆盖到远端。
+                # 默认行为：首次启用 WebDAV 时先尝试从远端拉取备份覆盖本地。
+                try:
+                    pulled = await backup_manager.pull_if_exists()
+                    if pulled:
+                        # pull 会覆盖 data_dir 下的文件（包含 web.config.json）。
+                        # 这里重新加载远端配置，并保留本次填写的 WebDAV 信息，
+                        # 避免远端旧 WebDAV 配置（例如密码已变更）导致后续备份失败。
+                        restored = load_config(settings)
+                        restored = _ensure_admin_config(
+                            settings, restored, request.app.state.logger
+                        )
+                        restored.webdav = new_config.webdav
+                        restored.admin_username = new_config.admin_username
+                        restored.admin_password = new_config.admin_password
+                        restored.session_secret = new_config.session_secret
+                        restored.cookie_secure = new_config.cookie_secure
+                        restored.proxy = new_config.proxy
+                        if api_id_value and api_hash_value:
+                            restored.api_id = new_config.api_id
+                            restored.api_hash = new_config.api_hash
+                        save_config(settings, restored)
+                        request.app.state.web_config = restored
+                        _apply_runtime_env(restored)
+                        await _auto_start_enabled_tasks()
+                except Exception as e:
+                    restore_failed = True
+                    request.app.state.logger.warning("自动从 WebDAV 恢复失败：%s", e)
+
+            # 若自动恢复失败（常见原因：路径/密钥不对），不要启动定时推送，避免把空数据覆盖远端备份。
+            if not restore_failed:
+                request.app.state.backup_task = asyncio.create_task(
+                    backup_manager.run_scheduler()
+                )
 
         return RedirectResponse(url="/settings?ok=1", status_code=303)
 
